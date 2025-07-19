@@ -1,0 +1,28 @@
+{
+    "name": "yidocs",
+    "version": "2.1.0",
+    "description": "yidocs(易文档) - 文档模板我的是的",
+    "type": "module",
+    "main": "index.js",
+    "private": false,
+    "publishConfig": {
+        "access": "public",
+        "registry": "https://registry.npmjs.org"
+    },
+    "keywords": [
+        "fastify",
+        "nodejs",
+        "api"
+    ],
+    "scripts": {
+        "dev": "vitepress dev",
+        "build": "vitepress build"
+    },
+    "author": "陈随易 <bimostyle@qq.com>",
+    "license": "Apache-2.0",
+    "dependencies": {
+        "@yidocs/auto": "^2.1.0",
+        "vitepress": "^1.6.3"
+    },
+    "gitHead": "4dbc2d2c7023472d190a97e096250c7d855a6ed3"
+}

@@ -1,0 +1,77 @@
+{
+    "name": "yiadmin",
+    "version": "1.5.0",
+    "description": "fnMap(待办)基于 vue3 + yite-cli + arco-design-vue 的后台管理模板222",
+    "sideEffects": true,
+    "type": "module",
+    "private": false,
+    "license": "Apache-2.0",
+    "publishConfig": {
+        "access": "public",
+        "registry": "https://registry.npmjs.org"
+    },
+    "author": "chensuiyi <bimostyle@qq.com>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/chenbimo/yicode.git"
+    },
+    "homepage": "https://chensuiyi.me",
+    "scripts": {
+        "lint": "eslint ./src",
+        "fix": "eslint ./src --fix",
+        "format": "prettier --write .",
+        "inspect": "eslint --inspect-config",
+        "dev": "yite --command=dev --envfile=development --workdir=./",
+        "build": "yite --command=build --envfile=production --workdir=./",
+        "update:template": "yite --command=update --project-type=yiadmin"
+    },
+    "keywords": [
+        "lodash",
+        "utils",
+        "helper",
+        "help"
+    ],
+    "files": [
+        "public/",
+        "src/",
+        ".gitignore",
+        ".prettier",
+        "eslint.config.js",
+        "index.html",
+        "jsconfig.json",
+        "LICENSE",
+        "package.json",
+        "README.md",
+        "yite.config.js"
+    ],
+    "dependencies": {
+        "@arco-design/web-vue": "^2.56.0",
+        "@arco-plugins/vite-vue": "^1.4.5",
+        "@iconify/json": "^2.2.234",
+        "axios": "^1.7.3",
+        "date-fns": "^3.6.0",
+        "js-md5": "^0.8.3",
+        "lodash-es": "^4.17.21",
+        "pinia": "^2.2.0",
+        "sass": "^1.77.8",
+        "store2": "^2.14.3",
+        "vue": "^3.4.35",
+        "vue-i18n": "^9.13.1",
+        "vue-router": "^4.4.2",
+        "yidash": "link:..\\yidash",
+        "yite-cli": "link:..\\yite-cli"
+    },
+    "devDependencies": {
+        "lint-staged": "^15.2.8",
+        "prettier": "^3.3.3",
+        "simple-git-hooks": "^2.11.1"
+    },
+    "simple-git-hooks": {
+        "pre-commit": "pnpm exec lint-staged"
+    },
+    "lint-staged": {
+        "*": [
+            "prettier --write --cache --ignore-unknown"
+        ]
+    }
+}

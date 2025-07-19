@@ -1,0 +1,25 @@
+{
+    "name": "funpi",
+    "version": "1.0.0",
+    "description": "放屁接口 + 后台管理",
+    "main": "funpi.js",
+    "type": "module",
+    "publishConfig": {
+        "access": "restricted"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/chenbimo/funpi.git"
+    },
+    "scripts": {
+        "r": "lerna publish"
+    },
+    "author": "chensuiyi <bimostyle@qq.com>",
+    "homepage": "https://chensuiyi.me",
+    "workspaces": [
+        "packages/*"
+    ],
+    "devDependencies": {
+        "lerna": "^8.2.2"
+    }
+}

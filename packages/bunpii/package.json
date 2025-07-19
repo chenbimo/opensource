@@ -1,0 +1,52 @@
+{
+    "name": "bunpii",
+    "version": "0.1.14",
+    "description": "BunPii - 为 Bun 专属打造的 API 接口框架核心引擎",
+    "type": "module",
+    "private": false,
+    "publishConfig": {
+        "access": "public",
+        "registry": "https://registry.npmjs.org"
+    },
+    "main": "main.js",
+    "exports": {
+        ".": "./main.js"
+    },
+    "scripts": {
+        "r": "bun publish --registry=https://registry.npmjs.org --access=public"
+    },
+    "keywords": [
+        "bun",
+        "api",
+        "framework",
+        "core",
+        "javascript",
+        "backend",
+        "rest",
+        "http"
+    ],
+    "author": "chensuiyi <bimostyle@qq.com>",
+    "homepage": "https://chensuiyi.me",
+    "license": "Apache-2.0",
+    "files": [
+        "apis/",
+        "checks/",
+        "config/",
+        "libs/",
+        "plugins/",
+        "schema/",
+        "utils/",
+        ".gitignore",
+        ".npmignore",
+        ".bunignore",
+        ".editorconfig",
+        ".npmrc",
+        ".prettierignore",
+        ".prettierrc",
+        "LICENSE",
+        "main.js",
+        "package.json",
+        "README.md",
+        "vitest.config.js"
+    ]
+}

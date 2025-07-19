@@ -1,0 +1,3 @@
+-   引入 vite-plugin-node-polyfills
+-   处理开启压缩图片后，public 的图片会消失的问题。
+-   bun publish --registry=https://registry.npmjs.org --access=public

@@ -1,0 +1,71 @@
+{
+    "name": "yite-cli",
+    "version": "4.7.2",
+    "description": "专注于vite + vue3 的项目开发脚手架",
+    "exports": {
+        "./unocss": "./unocss.config.js"
+    },
+    "bin": {
+        "yite": "./yite-cli.js"
+    },
+    "type": "module",
+    "private": false,
+    "license": "Apache-2.0",
+    "publishConfig": {
+        "access": "public",
+        "registry": "https://registry.npmjs.org"
+    },
+    "scripts": {},
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/chenbimo/yite-cli"
+    },
+    "homepage": "https://chensuiyi.me",
+    "keywords": [
+        "vite",
+        "vue.js",
+        "vue-cli",
+        "webpack",
+        "cli",
+        "vue",
+        "web",
+        "脚手架"
+    ],
+    "files": [
+        "utils/",
+        "plugins/",
+        "scripts/",
+        "LICENSE",
+        "index.js",
+        "package.json",
+        "README.md",
+        "system.js",
+        "unocss.config.js",
+        "vite.config.js",
+        "yite-cli.js"
+    ],
+    "author": "chensuiyi <bimostyle@qq.com>",
+    "dependencies": {
+        "@unocss/transformer-compile-class": "^66.1.3",
+        "@unocss/transformer-directives": "^66.1.3",
+        "@unocss/transformer-variant-group": "^66.1.3",
+        "@vitejs/plugin-vue": "^5.2.4",
+        "@vue-macros/reactivity-transform": "^3.0.0-beta.14",
+        "merge-anything": "^6.0.6",
+        "pacote": "^21.0.0",
+        "pinia": "^3.0.2",
+        "portfinder": "^1.0.37",
+        "rolldown-vite": "^6.3.17",
+        "rollup-plugin-visualizer": "^6.0.1",
+        "sass": "^1.89.1",
+        "unocss": "^66.1.3",
+        "unplugin-auto-import": "^19.3.0",
+        "unplugin-icons": "^22.1.0",
+        "unplugin-vue-components": "^28.7.0",
+        "vite-plugin-inspect": "^11.1.0",
+        "vite-plugin-vue-devtools": "^7.7.6",
+        "vue": "^3.5.16",
+        "vue-i18n": "^11.1.5",
+        "vue-router": "^4.5.1"
+    }
+}
