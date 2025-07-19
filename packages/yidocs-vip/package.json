@@ -1,6 +1,6 @@
 {
     "name": "@yidocs/vip",
-    "version": "2.1.0",
+    "version": "2.1.1",
     "description": "yidocs(易文档) - 会员隐藏内容",
     "type": "module",
     "main": "index.js",

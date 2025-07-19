@@ -1,6 +1,6 @@
 {
     "name": "@yidocs/auto",
-    "version": "2.1.0",
+    "version": "2.1.1",
     "description": "yidocs(易文档) - 自动导航和侧边栏",
     "type": "module",
     "main": "index.js",
