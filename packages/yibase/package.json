@@ -48,18 +48,5 @@
     "dependencies": {
         "@iconify/json": "^2.2.302",
         "yite-cli": "^4.2.1"
-    },
-    "devDependencies": {
-        "lint-staged": "^15.4.3",
-        "prettier": "^3.4.2",
-        "simple-git-hooks": "^2.11.1"
-    },
-    "simple-git-hooks": {
-        "pre-commit": "pnpm exec lint-staged"
-    },
-    "lint-staged": {
-        "*": [
-            "prettier --write --cache --ignore-unknown"
-        ]
     }
 }

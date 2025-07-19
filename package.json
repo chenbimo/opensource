@@ -20,6 +20,11 @@
         "packages/*"
     ],
     "devDependencies": {
-        "lerna": "^8.2.2"
+        "lerna": "^8.2.2",
+        "lefthook": "^1.12.2",
+        "prettier": "^3.3.3"
+    },
+    "lint-staged": {
+        "*.{js,css,scss,less,ts,jsx,vue,html,json,md,yaml}": "prettier --write --cache --ignore-unknown"
     }
 }

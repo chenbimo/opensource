@@ -46,16 +46,5 @@
         "lodash-es": "^4.17.21",
         "ora": "^8.0.1",
         "simple-git": "^3.25.0"
-    },
-    "devDependencies": {
-        "lint-staged": "^15.2.7",
-        "prettier": "^3.3.3",
-        "simple-git-hooks": "^2.11.1"
-    },
-    "simple-git-hooks": {
-        "pre-commit": "pnpm lint-staged"
-    },
-    "lint-staged": {
-        "*.{js,css,scss,less,ts,jsx,vue,html,json,md,yaml}": "prettier --write"
     }
 }
