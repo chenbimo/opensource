@@ -6,5 +6,5 @@
 [pre-commit]
 parallel = true
 [[pre-commit.jobs]]
-run = "bun --bun prettier --write --cache --ignore-unknown"
+run = "bunx prettier --write --cache --ignore-unknown {staged_files}"
 glob = "*.{js,css,scss,less,ts,jsx,vue,html,json,md,yaml}"

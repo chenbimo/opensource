@@ -1,11 +1,12 @@
 {
+    "$schema": "node_modules/@lerna-lite/cli/schemas/lerna-schema.json",
     "version": "7.20.27",
     "packages": ["packages/*"],
     "npmClient": "bun",
     "command": {
         "version": {
             "allowBranch": ["main", "master"],
-            "changelog": false,
+            "conventionalCommits": false,
             "gitTagVersion": true,
             "yes": true,
             "forcePublish": true,

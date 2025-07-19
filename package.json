@@ -19,12 +19,12 @@
     "workspaces": [
         "packages/*"
     ],
-    "devDependencies": {
-        "lerna": "^8.2.2",
+    "dependencies": {
+        "@lerna-lite/cli": "^4.6.1",
+        "@lerna-lite/publish": "^4.6.1",
         "lefthook": "^1.12.2",
-        "prettier": "^3.3.3"
-    },
-    "lint-staged": {
-        "*.{js,css,scss,less,ts,jsx,vue,html,json,md,yaml}": "prettier --write --cache --ignore-unknown"
+        "lint-staged": "^15.2.8",
+        "prettier": "^3.3.3",
+        "simple-git-hooks": "^2.11.1"
     }
 }
