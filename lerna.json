@@ -10,7 +10,7 @@
             "gitTagVersion": true,
             "yes": true,
             "forcePublish": true,
-            "syncWorkspaceLock": true,
+            "syncWorkspaceLock": false,
             "push": false
         },
         "publish": {

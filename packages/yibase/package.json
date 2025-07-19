@@ -48,5 +48,6 @@
     "dependencies": {
         "@iconify/json": "^2.2.302",
         "yite-cli": "^4.7.3"
-    }
+    },
+    "gitHead": "0d308345a41e50337d90b6b9c5a8cabb89e46388"
 }
