@@ -10,7 +10,6 @@
             "yes": true,
             "forcePublish": true,
             "syncWorkspaceLock": true,
-            "exact": true,
             "push": false
         },
         "publish": {
