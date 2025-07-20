@@ -1,5 +1,5 @@
 import { Env } from '../config/env.js';
-import { logger } from '../utils/logger.js';
+import { Logger } from '../utils/logger.js';
 import { Crud } from '../utils/curd.js';
 
 export default {
@@ -41,11 +41,11 @@ export default {
                     return {};
                 }
             } else {
-                logger.warn(`Mysql 未启用，跳过初始化`);
+                Logger.warn(`Mysql 未启用，跳过初始化`);
                 return {};
             }
         } catch (error) {
-            logger.error(`数据库连接失败:`, error.message);
+            Logger.error(`数据库连接失败:`, error.message);
             process.exit();
         }
     }

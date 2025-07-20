@@ -1,4 +1,5 @@
 import { Env } from '../config/env.js';
+import { Logger } from '../utils/logger.js';
 
 export default {
     after: ['_logger'],
@@ -29,7 +30,7 @@ export default {
                     // 测试连接
                     const result = await redis.ping();
                 } catch (error) {
-                    bunpii.logger.error(`Redis 连接失败:`, error);
+                    Logger.error(`Redis 连接失败:`, error);
                     process.exit();
                 }
 
@@ -42,7 +43,7 @@ export default {
                         }
                         return await redis.set(`${process.env.REDIS_KEY_PREFIX}:${key}`, data);
                     } catch (error) {
-                        bunpii.logger.error(`Redis setObject 错误:`, error);
+                        Logger.error(`Redis setObject 错误:`, error);
                     }
                 };
 
@@ -51,7 +52,7 @@ export default {
                         const data = await redis.get(`${process.env.REDIS_KEY_PREFIX}:${key}`);
                         return data ? JSON.parse(data) : null;
                     } catch (error) {
-                        bunpii.logger.error(`Redis getObject 错误:`, error);
+                        Logger.error(`Redis getObject 错误:`, error);
                         return null;
                     }
                 };
@@ -60,7 +61,7 @@ export default {
                     try {
                         await redis.del(`${process.env.REDIS_KEY_PREFIX}:${key}`);
                     } catch (error) {
-                        bunpii.logger.error(`Redis delObject 错误:`, error);
+                        Logger.error(`Redis delObject 错误:`, error);
                     }
                 };
 
@@ -84,11 +85,11 @@ export default {
 
                 return redis;
             } else {
-                bunpii.logger.warn(`Redis 未启用，跳过初始化`);
+                Logger.warn(`Redis 未启用，跳过初始化`);
                 return {};
             }
         } catch (err) {
-            bunpii.logger.error(`Redis 初始化失败:`, err);
+            Logger.error(`Redis 初始化失败:`, err);
             process.exit();
         }
     }

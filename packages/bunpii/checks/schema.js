@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { ruleSplit } from '../utils/util.js';
-import { logger } from '../utils/logger.js';
+import { Logger } from '../utils/Logger.js';
 
 export default async () => {
     try {
@@ -32,7 +32,7 @@ export default async () => {
                     const ruleParts = ruleSplit(rule);
 
                     if (ruleParts.length !== 5) {
-                        logger.warn(`${fileName} 文件 ${fieldName} 验证规则错误，应包含 5 个部分，但包含 ${ruleParts.length} 个部分`);
+                        Logger.warn(`${fileName} 文件 ${fieldName} 验证规则错误，应包含 5 个部分，但包含 ${ruleParts.length} 个部分`);
                         fileValid = false;
                         continue;
                     }
@@ -42,20 +42,20 @@ export default async () => {
                     // 验证类型（必须严格使用小写类型名称）
                     const validTypes = ['number', 'string', 'array'];
                     if (!validTypes.includes(type)) {
-                        logger.warn(`${fileName} 文件 ${fieldName} 类型 ${type} 不支持，应为小写的 number、string 或 array`);
+                        Logger.warn(`${fileName} 文件 ${fieldName} 类型 ${type} 不支持，应为小写的 number、string 或 array`);
                         fileValid = false;
                         continue;
                     }
 
                     // 验证最小值/最大值
                     if (minStr !== 'null' && isNaN(parseInt(minStr))) {
-                        logger.warn(`${fileName} 文件 ${fieldName} 最小值 ${minStr} 应为数字或 "null"`);
+                        Logger.warn(`${fileName} 文件 ${fieldName} 最小值 ${minStr} 应为数字或 "null"`);
                         fileValid = false;
                         continue;
                     }
 
                     if (maxStr !== 'null' && isNaN(parseInt(maxStr))) {
-                        logger.warn(`${fileName} 文件 ${fieldName} 最大值 ${maxStr} 应为数字或 "null"`);
+                        Logger.warn(`${fileName} 文件 ${fieldName} 最大值 ${maxStr} 应为数字或 "null"`);
                         fileValid = false;
                         continue;
                     }
@@ -68,7 +68,7 @@ export default async () => {
                             const expressionPart = spec.split('=')[0].trim();
 
                             if (!safePattern.test(expressionPart)) {
-                                logger.warn(`${fileName} 文件 ${fieldName} 表达式 ${expressionPart} 包含不安全的字符`);
+                                Logger.warn(`${fileName} 文件 ${fieldName} 表达式 ${expressionPart} 包含不安全的字符`);
                                 fileValid = false;
                                 continue;
                             }
@@ -76,7 +76,7 @@ export default async () => {
                             // 验证等号右侧是否为数字
                             const rightPart = spec.split('=')[1].trim();
                             if (isNaN(parseFloat(rightPart))) {
-                                logger.error(`${fileName} 文件 ${fieldName} 计算规则右边必须是数字，而不是 ${rightPart}`);
+                                Logger.error(`${fileName} 文件 ${fieldName} 计算规则右边必须是数字，而不是 ${rightPart}`);
                                 fileValid = false;
                                 continue;
                             }
@@ -85,7 +85,7 @@ export default async () => {
                             try {
                                 new RegExp(spec);
                             } catch (e) {
-                                logger.error(`${fileName} 文件 ${fieldName} 正则表达式 ${spec} 无效: ${e.message}`);
+                                Logger.error(`${fileName} 文件 ${fieldName} 正则表达式 ${spec} 无效: ${e.message}`);
                                 fileValid = false;
                                 continue;
                             }
@@ -99,7 +99,7 @@ export default async () => {
                     invalidFiles++;
                 }
             } catch (error) {
-                logger.error(`Schema ${fileName} 解析失败: ${error.message}`);
+                Logger.error(`Schema ${fileName} 解析失败: ${error.message}`);
                 invalidFiles++;
             }
         };
@@ -126,7 +126,7 @@ export default async () => {
             return true;
         }
     } catch (error) {
-        logger.error(`Schema 检查过程中出错:`, error);
+        Logger.error(`Schema 检查过程中出错:`, error);
         return false;
     }
 };
