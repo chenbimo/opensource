@@ -83,6 +83,7 @@ class BunPii {
             const glob = new Bun.Glob('*.js');
             const corePlugins = [];
             const userPlugins = [];
+            const loadedPluginNames = new Set(); // 用于跟踪已加载的插件名称
 
             // 扫描指定目录
             for await (const file of glob.scan({
@@ -96,6 +97,7 @@ class BunPii {
                 const pluginInstance = plugin.default;
                 pluginInstance.pluginName = fileName;
                 corePlugins.push(pluginInstance);
+                loadedPluginNames.add(fileName); // 记录已加载的核心插件名称
             }
 
             const sortedCorePlugins = sortPlugins(corePlugins);
@@ -121,6 +123,13 @@ class BunPii {
             })) {
                 const fileName = path.basename(file, '.js');
                 if (fileName.startsWith('_')) continue;
+
+                // 检查是否已经加载了同名的核心插件
+                if (loadedPluginNames.has(fileName)) {
+                    Logger.info(`跳过用户插件 ${fileName}，因为同名的核心插件已存在`);
+                    continue;
+                }
+
                 const plugin = await import(file);
                 const pluginInstance = plugin.default;
                 pluginInstance.pluginName = fileName;
@@ -131,15 +140,6 @@ class BunPii {
             if (sortedUserPlugins === false) {
                 Logger.error(`插件依赖关系错误，请检查插件的 after 属性`);
                 process.exit();
-            }
-
-            for (const plugin of sortedCorePlugins) {
-                try {
-                    this.pluginLists.push(plugin);
-                    this.appContext[plugin.pluginName] = typeof plugin?.onInit === 'function' ? await plugin?.onInit(this.appContext) : {};
-                } catch (error) {
-                    Logger.warn(`插件 ${plugin.pluginName} 初始化失败:`, error.message);
-                }
             }
 
             for (const plugin of sortedUserPlugins) {
