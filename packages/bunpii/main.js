@@ -68,7 +68,7 @@ class BunPii {
             if (failedChecks > 0) {
                 process.exit();
             } else if (totalChecks > 0) {
-                Logger.success(`所有系统检查通过!`);
+                Logger.info(`所有系统检查通过!`);
             } else {
                 Logger.info(`未执行任何检查`);
             }
@@ -403,4 +403,4 @@ class BunPii {
     }
 }
 
-export { BunPii, Env, Api, Jwt, Crypto2, validator, colors, Logger };
+export { BunPii, Env, Api, Jwt, Crypto2, validator, Logger };
