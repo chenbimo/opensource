@@ -374,4 +374,4 @@ class BunPii {
     }
 }
 
-export { BunPii, Env, Api, Jwt, Crypto2, Logger };
+export { BunPii, Env, Api, Jwt, Crypto2, Logger, ResultYes, ResultNo };
