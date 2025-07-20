@@ -143,3 +143,22 @@ export const isEmptyArray = (arr) => {
     // 检查是否为空数组
     return arr.length === 0;
 };
+
+// 返回结果
+export const ResultYes = (msg = '', data = {}, other = {}) => {
+    return {
+        ...other,
+        code: 0,
+        msg: msg,
+        data: data
+    };
+};
+
+export const ResultNo = (msg = '', data = {}, other = {}) => {
+    return {
+        ...other,
+        code: 1,
+        msg: msg,
+        data: data
+    };
+};

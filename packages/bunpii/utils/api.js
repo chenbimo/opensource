@@ -1,4 +1,5 @@
 import { Logger } from '../utils/logger.js';
+import { ResultYes, ResultNo } from '../utils/util.js';
 export class Api {
     // GET 方法
     static GET(name, auth = false, fields = {}, required = [], handler) {
@@ -41,10 +42,7 @@ export class Api {
                 });
 
                 // 返回错误响应
-                return {
-                    code: 1,
-                    msg: '内部服务器错误'
-                };
+                return ResultNo('内部服务器错误');
             }
         };
     }
