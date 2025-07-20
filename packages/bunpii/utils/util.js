@@ -1,3 +1,6 @@
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+
 export const sortPlugins = (plugins) => {
     const result = [];
     const visited = new Set();
@@ -161,4 +164,12 @@ export const ResultNo = (msg = '', data = {}, other = {}) => {
         msg: msg,
         data: data
     };
+};
+
+export const filename2 = (importMetaUrl) => {
+    return fileURLToPath(importMetaUrl);
+};
+
+export const dirname2 = (importMetaUrl) => {
+    return path.dirname(fileURLToPath(importMetaUrl));
 };

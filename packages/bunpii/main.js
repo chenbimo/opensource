@@ -8,7 +8,7 @@ import { Jwt } from './utils/jwt.js';
 import { validator } from './utils/validate.js';
 import { Crypto2 } from './utils/crypto.js';
 import { XMLParser } from './libs/xml/XMLParser.js';
-import { isEmptyObject, pickFields, sortPlugins, ResultYes, ResultNo } from './utils/util.js';
+import { isEmptyObject, pickFields, sortPlugins, ResultYes, ResultNo, filename2, dirname2 } from './utils/util.js';
 
 class BunPii {
     constructor(options = {}) {
@@ -20,7 +20,7 @@ class BunPii {
 
     async initCheck() {
         try {
-            const checksDir = path.join(__dirname, 'checks');
+            const checksDir = path.join(dirname2(import.meta.url), 'checks');
             const glob = new Bun.Glob('*.js');
 
             // 统计信息
@@ -95,7 +95,7 @@ class BunPii {
 
             // 扫描指定目录
             for await (const file of glob.scan({
-                cwd: path.join(__dirname, 'plugins'),
+                cwd: path.join(dirname2(import.meta.url), 'plugins'),
                 onlyFiles: true,
                 absolute: true
             })) {
@@ -168,7 +168,7 @@ class BunPii {
     }
     async loadApis(dirName) {
         try {
-            const coreApisDir = path.join(__dirname, 'apis');
+            const coreApisDir = path.join(dirname2(import.meta.url), 'apis');
             const userApisDir = path.join(process.cwd(), 'apis');
             const glob = new Bun.Glob('**/*.js');
             const apiDir = dirName === 'core' ? coreApisDir : userApisDir;
