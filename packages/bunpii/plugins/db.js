@@ -36,7 +36,7 @@ export default {
                 const result = await sql`SELECT VERSION() AS version`.execute(db);
                 if (result?.rows?.[0]?.version) {
                     // 扩展数据库实例
-                    return Crud(db, bunpii.redis);
+                    return new Crud(db, bunpii.redis, sql);
                 } else {
                     return {};
                 }
