@@ -27,18 +27,18 @@ export class Api {
 
     // 包装处理器，自动处理异常和响应格式
     static wrapHandler(handler) {
-        return async (bunpii, ctx, req) => {
+        return async (bp, ctx, req) => {
             try {
-                const result = await handler(bunpii, ctx, req);
+                const result = await handler(bp, ctx, req);
 
                 return result;
             } catch (error) {
                 Logger.error({
-                    code: 1,
                     msg: '内部服务器错误',
                     error: error.message,
                     stack: error.stack,
-                    url: req.url || ''
+                    url: req?.url || '',
+                    user: ctx?.user || {}
                 });
 
                 // 返回错误响应

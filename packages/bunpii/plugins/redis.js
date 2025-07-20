@@ -30,7 +30,11 @@ export default {
                     // 测试连接
                     const result = await redis.ping();
                 } catch (error) {
-                    Logger.error(`Redis 连接失败:`, error);
+                    Logger.error({
+                        msg: 'Redis 连接失败',
+                        message: error.message,
+                        stack: error.stack
+                    });
                     process.exit();
                 }
 
@@ -43,7 +47,11 @@ export default {
                         }
                         return await redis.set(`${process.env.REDIS_KEY_PREFIX}:${key}`, data);
                     } catch (error) {
-                        Logger.error(`Redis setObject 错误:`, error);
+                        Logger.error({
+                            msg: 'Redis setObject 错误',
+                            message: error.message,
+                            stack: error.stack
+                        });
                     }
                 };
 
@@ -52,7 +60,11 @@ export default {
                         const data = await redis.get(`${process.env.REDIS_KEY_PREFIX}:${key}`);
                         return data ? JSON.parse(data) : null;
                     } catch (error) {
-                        Logger.error(`Redis getObject 错误:`, error);
+                        Logger.error({
+                            msg: 'Redis getObject 错误',
+                            message: error.message,
+                            stack: error.stack
+                        });
                         return null;
                     }
                 };
@@ -61,7 +73,11 @@ export default {
                     try {
                         await redis.del(`${process.env.REDIS_KEY_PREFIX}:${key}`);
                     } catch (error) {
-                        Logger.error(`Redis delObject 错误:`, error);
+                        Logger.error({
+                            msg: 'Redis delObject 错误',
+                            message: error.message,
+                            stack: error.stack
+                        });
                     }
                 };
 
@@ -89,7 +105,11 @@ export default {
                 return {};
             }
         } catch (err) {
-            Logger.error(`Redis 初始化失败:`, err);
+            Logger.error({
+                msg: 'Redis 初始化失败',
+                message: err.message,
+                stack: err.stack
+            });
             process.exit();
         }
     }

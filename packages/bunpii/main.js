@@ -57,7 +57,11 @@ class BunPii {
                         failedChecks++;
                     }
                 } catch (error) {
-                    Logger.error(`检查失败 ${fileName}: ${error.message}`);
+                    Logger.error({
+                        msg: `检查失败 ${fileName}`,
+                        error: error.message,
+                        stack: error.stack
+                    });
                     failedChecks++;
                 }
             }
@@ -73,7 +77,11 @@ class BunPii {
                 Logger.info(`未执行任何检查`);
             }
         } catch (error) {
-            Logger.error(`执行系统检查过程中出错:`, error);
+            Logger.error({
+                msg: '加载接口时发生错误',
+                error: error.message,
+                stack: error.stack
+            });
             process.exit();
         }
     }
@@ -275,6 +283,7 @@ class BunPii {
                                 }
                             } catch (err) {
                                 Logger.error({
+                                    msg: '处理请求参数时发生错误',
                                     error: err.message,
                                     stack: err.stack
                                 });
@@ -290,7 +299,11 @@ class BunPii {
                                     await plugin?.onGet(this.appContext, ctx, req);
                                 }
                             } catch (error) {
-                                Logger.error(`插件处理请求时发生错误:`, error);
+                                Logger.error({
+                                    msg: '插件处理请求时发生错误',
+                                    error: error.message,
+                                    stack: error.stack
+                                });
                             }
                         }
 
@@ -327,11 +340,11 @@ class BunPii {
                         } else {
                             return new Response(result);
                         }
-                    } catch (err) {
+                    } catch (error) {
                         Logger.error({
                             msg: '处理接口请求时发生错误',
-                            error: err.message,
-                            stack: err.stack,
+                            error: error.message,
+                            stack: error.stack,
                             url: req.url
                         });
                         return Response.json(ResultNo('内部服务器错误'));

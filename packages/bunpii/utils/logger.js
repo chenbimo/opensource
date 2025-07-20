@@ -81,7 +81,7 @@ export class Logger {
             // 使用 Node.js 的 appendFile 进行文件追加
             await appendFile(currentLogFile, message + '\n', 'utf8');
         } catch (error) {
-            console.error('写入日志文件失败:', error);
+            console.error('写入日志文件失败:', error.message);
         }
     }
 

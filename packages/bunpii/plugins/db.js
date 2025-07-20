@@ -45,7 +45,11 @@ export default {
                 return {};
             }
         } catch (error) {
-            Logger.error(`数据库连接失败:`, error.message);
+            Logger.error({
+                msg: '数据库连接失败',
+                message: error.message,
+                stack: error.stack
+            });
             process.exit();
         }
     }
