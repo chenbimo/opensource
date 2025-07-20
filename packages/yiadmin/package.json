@@ -45,19 +45,19 @@
         "yite.config.js"
     ],
     "dependencies": {
-        "@arco-design/web-vue": "^2.56.0",
+        "@arco-design/web-vue": "^2.57.0",
         "@arco-plugins/vite-vue": "^1.4.5",
-        "@iconify/json": "^2.2.234",
-        "axios": "^1.7.3",
-        "date-fns": "^3.6.0",
+        "@iconify/json": "^2.2.359",
+        "axios": "^1.10.0",
+        "date-fns": "^4.1.0",
         "js-md5": "^0.8.3",
         "lodash-es": "^4.17.21",
-        "pinia": "^2.2.0",
-        "sass": "^1.77.8",
-        "store2": "^2.14.3",
-        "vue": "^3.4.35",
-        "vue-i18n": "^9.13.1",
-        "vue-router": "^4.4.2"
+        "pinia": "^3.0.3",
+        "sass": "^1.89.2",
+        "store2": "^2.14.4",
+        "vue": "^3.5.17",
+        "vue-i18n": "^11.1.10",
+        "vue-router": "^4.5.1"
     },
     "gitHead": "0d308345a41e50337d90b6b9c5a8cabb89e46388"
 }
