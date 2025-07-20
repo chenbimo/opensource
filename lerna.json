@@ -9,7 +9,6 @@
             "conventionalCommits": false,
             "gitTagVersion": true,
             "yes": true,
-            "forcePublish": true,
             "syncWorkspaceLock": false,
             "push": false
         },
