@@ -1,8 +1,7 @@
 {
     "name": "funpi",
     "version": "1.0.0",
-    "description": "放屁接口 + 后台管理",
-    "main": "funpi.js",
+    "description": "陈随易开源",
     "type": "module",
     "publishConfig": {
         "access": "restricted"
