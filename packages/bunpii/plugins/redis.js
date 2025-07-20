@@ -1,5 +1,4 @@
 import { Env } from '../config/env.js';
-import { colors } from '../utils/colors.js';
 
 export default {
     after: ['_logger'],
@@ -30,7 +29,7 @@ export default {
                     // 测试连接
                     const result = await redis.ping();
                 } catch (error) {
-                    bunpii.logger.error(`${colors.error} Redis 连接失败:`, error);
+                    bunpii.logger.error(`Redis 连接失败:`, error);
                     process.exit();
                 }
 
@@ -43,7 +42,7 @@ export default {
                         }
                         return await redis.set(`${process.env.REDIS_KEY_PREFIX}:${key}`, data);
                     } catch (error) {
-                        bunpii.logger.error(`${colors.error} Redis setObject 错误:`, error);
+                        bunpii.logger.error(`Redis setObject 错误:`, error);
                     }
                 };
 
@@ -52,7 +51,7 @@ export default {
                         const data = await redis.get(`${process.env.REDIS_KEY_PREFIX}:${key}`);
                         return data ? JSON.parse(data) : null;
                     } catch (error) {
-                        bunpii.logger.error(`${colors.error} Redis getObject 错误:`, error);
+                        bunpii.logger.error(`Redis getObject 错误:`, error);
                         return null;
                     }
                 };
@@ -61,7 +60,7 @@ export default {
                     try {
                         await redis.del(`${process.env.REDIS_KEY_PREFIX}:${key}`);
                     } catch (error) {
-                        bunpii.logger.error(`${colors.error} Redis delObject 错误:`, error);
+                        bunpii.logger.error(`Redis delObject 错误:`, error);
                     }
                 };
 
@@ -85,11 +84,11 @@ export default {
 
                 return redis;
             } else {
-                bunpii.logger.warn(`${colors.warn} Redis 未启用，跳过初始化`);
+                bunpii.logger.warn(`Redis 未启用，跳过初始化`);
                 return {};
             }
         } catch (err) {
-            bunpii.logger.error(`${colors.error} Redis 初始化失败:`, err);
+            bunpii.logger.error(`Redis 初始化失败:`, err);
             process.exit();
         }
     }

@@ -3,7 +3,6 @@ import { Env } from './config/env.js';
 
 // 工具函数
 import { Api } from './utils/api.js';
-import { colors } from './utils/colors.js';
 import { Logger } from './utils/logger.js';
 import { Jwt } from './utils/jwt.js';
 import { validator } from './utils/validate.js';
@@ -50,31 +49,31 @@ class BunPii {
                         if (checkResult === true) {
                             passedChecks++;
                         } else {
-                            console.log(`${colors.error} 检查未通过: ${fileName}`);
+                            Logger.error(`检查未通过: ${fileName}`);
                             failedChecks++;
                         }
                     } else {
-                        console.log(`${colors.warn} 文件 ${fileName} 未导出默认函数`);
+                        Logger.warn(`文件 ${fileName} 未导出默认函数`);
                         failedChecks++;
                     }
                 } catch (error) {
-                    console.log(`${colors.error} 检查失败 ${fileName}: ${error.message}`);
+                    Logger.error(`检查失败 ${fileName}: ${error.message}`);
                     failedChecks++;
                 }
             }
 
             // 输出检查结果统计
-            console.log(`${colors.info} 总检查数: ${colors.blue(totalChecks)}, 通过: ${colors.green(passedChecks)}, 失败: ${colors.red(failedChecks)}`);
+            Logger.info(`总检查数: ${totalChecks}, 通过: ${passedChecks}, 失败: ${failedChecks}`);
 
             if (failedChecks > 0) {
                 process.exit();
             } else if (totalChecks > 0) {
-                console.log(`${colors.success} 所有系统检查通过!`);
+                Logger.success(`所有系统检查通过!`);
             } else {
-                console.log(`${colors.info} 未执行任何检查`);
+                Logger.info(`未执行任何检查`);
             }
         } catch (error) {
-            console.log(`${colors.error} 执行系统检查过程中出错:`, error);
+            Logger.error(`执行系统检查过程中出错:`, error);
             process.exit();
         }
     }
@@ -101,7 +100,7 @@ class BunPii {
 
             const sortedCorePlugins = sortPlugins(corePlugins);
             if (sortedCorePlugins === false) {
-                console.error(`${colors.error} 插件依赖关系错误，请检查插件的 after 属性`);
+                Logger.error(`插件依赖关系错误，请检查插件的 after 属性`);
                 process.exit();
             }
 
@@ -110,7 +109,7 @@ class BunPii {
                     this.pluginLists.push(plugin);
                     this.appContext[plugin.pluginName] = typeof plugin?.onInit === 'function' ? await plugin?.onInit(this.appContext) : {};
                 } catch (error) {
-                    console.warn(`${colors.error} 插件 ${plugin.pluginName} 初始化失败:`, error.message);
+                    Logger.warn(`插件 ${plugin.pluginName} 初始化失败:`, error.message);
                 }
             }
 
@@ -130,7 +129,7 @@ class BunPii {
 
             const sortedUserPlugins = sortPlugins(userPlugins);
             if (sortedUserPlugins === false) {
-                console.error(`${colors.error} 插件依赖关系错误，请检查插件的 after 属性`);
+                Logger.error(`插件依赖关系错误，请检查插件的 after 属性`);
                 process.exit();
             }
 
@@ -139,7 +138,7 @@ class BunPii {
                     this.pluginLists.push(plugin);
                     this.appContext[plugin.pluginName] = typeof plugin?.onInit === 'function' ? await plugin?.onInit(this.appContext) : {};
                 } catch (error) {
-                    console.warn(`${colors.error} 插件 ${plugin.pluginName} 初始化失败:`, error.message);
+                    Logger.warn(`插件 ${plugin.pluginName} 初始化失败:`, error.message);
                 }
             }
 
@@ -148,7 +147,7 @@ class BunPii {
                     this.pluginLists.push(plugin);
                     this.appContext[plugin.pluginName] = typeof plugin?.onInit === 'function' ? await plugin?.onInit(this.appContext) : {};
                 } catch (error) {
-                    console.warn(`${colors.error} 插件 ${plugin.pluginName} 初始化失败:`, error.message);
+                    Logger.warn(`插件 ${plugin.pluginName} 初始化失败:`, error.message);
                 }
             }
         } catch (error) {
@@ -298,7 +297,7 @@ class BunPii {
                                     await plugin?.onGet(this.appContext, ctx, req);
                                 }
                             } catch (error) {
-                                console.error(`${colors.error} 插件处理请求时发生错误:`, error);
+                                Logger.error(`插件处理请求时发生错误:`, error);
                             }
                         }
 
