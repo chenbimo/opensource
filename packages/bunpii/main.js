@@ -312,7 +312,7 @@ class BunPii {
                         });
 
                         // 登录验证
-                        if (api.auth && !ctx.user.id) {
+                        if (api.auth === true && !ctx.user.id) {
                             return Response.json({
                                 code: 1,
                                 msg: '未登录'
