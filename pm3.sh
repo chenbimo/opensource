@@ -4,6 +4,7 @@
 
 # 基础 PM3 命令
 alias pm3='bunx --bun pm2'
+alias pm2v='bunx --bun pm2 -v'
 alias pm3list='bunx --bun pm2 ls'
 alias pm3status='bunx --bun pm2 status'
 
@@ -105,33 +106,25 @@ pm3stat() {
 pm3h() {
     echo "=== PM3 + Bun 别名帮助 ==="
     echo ""
-    echo "基础命令:"
-    echo "  pm3-ls, pm3-list    - 列出所有应用"
-    echo "  pm3-status          - 显示应用状态"
-    echo "  pm3-monit           - 打开监控界面"
-    echo ""
-    echo "应用管理 (支持参数):"
-    echo "  pm3s <file>         - 启动应用"
-    echo "  pm3r <name>         - 重启应用"
+    echo "  pm3                 - PM2 基础命令"
+    echo "  pm3list             - 列出所有应用"
+    echo "  pm3status           - 显示应用状态"
+    echo "  pm3monit            - 打开监控界面"
+    echo "  pm3rt <name>        - 重启应用"
     echo "  pm3st <name>        - 停止应用"
-    echo "  pm3d <name>         - 删除应用"
-    echo "  pm3i <name>         - 查看应用信息"
-    echo ""
-    echo "日志管理:"
-    echo "  pm3l [name]         - 查看日志（简写）"
-    echo "  pm3log <name>       - 查看日志（详细，支持更多选项）"
-    echo "  pm3-flush           - 清空日志"
-    echo "  pm3rl [name]        - 重载日志"
-    echo ""
-    echo "便捷命令:"
+    echo "  pm3dn <name>        - 删除应用"
+    echo "  pm3in [name]        - 查看应用信息"
+    echo "  pm3log [name]       - 查看日志"
     echo "  pm3ra               - 重启所有应用"
     echo "  pm3sa               - 停止所有应用"
-    echo "  pm3da               - 删除所有应用"
-    echo "  pm3eco [file]       - 使用 ecosystem 文件启动"
-    echo "  pm3backup           - 备份当前状态"
-    echo "  pm3restore [file]   - 恢复状态"
+    echo "  pm3da               - 删除所有应用（需确认）"
+    echo "  pm3stat             - 状态概览"
+    echo "  pm3update           - 更新 PM2"
+    echo "  pm3reset            - 重置"
+    echo "  pm3kill             - 杀死 PM2 守护进程"
     echo ""
-    echo "更多帮助: bunx --bun pm3 help"
+    echo "说明: 大部分命令支持应用名称、ID 或 'all' 参数"
+    echo "更多帮助: pm3 help"
 }
 
 # 设置命令补全（如果支持）
