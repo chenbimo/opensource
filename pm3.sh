@@ -4,7 +4,7 @@
 
 # 基础 PM3 命令
 alias pm3='bunx --bun pm2'
-alias pm2v='bunx --bun pm2 -v'
+alias pm3v='bunx --bun pm2 -v'
 alias pm3list='bunx --bun pm2 ls'
 alias pm3status='bunx --bun pm2 status'
 
