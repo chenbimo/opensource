@@ -1,4 +1,4 @@
-import { Api } from 'bunpii';
+import { Api } from 'befly';
 
 export default Api.POST('测试接口', true, {}, [], async ({ db, logger }, { body, user, headers }) => {
     try {

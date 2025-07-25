@@ -2,7 +2,7 @@ import { Env } from '../../config/env.js';
 import { Api } from '../../utils/api.js';
 import { RYes, RNo } from '../../utils/util.js';
 
-export default Api.POST('健康检查', { auth: false }, {}, [], async (bunpii, ctx) => {
+export default Api.POST('健康检查', { auth: false }, {}, [], async (befly, ctx) => {
     const info = {
         status: 'ok',
         timestamp: new Date().toISOString(),
@@ -15,9 +15,9 @@ export default Api.POST('健康检查', { auth: false }, {}, [], async (bunpii, 
     };
     // 检查 Redis 连接状态
     if (Env.REDIS_ENABLE === 1) {
-        if (bunpii.redis) {
+        if (befly.redis) {
             try {
-                await bunpii.redis.ping();
+                await befly.redis.ping();
                 info.redis = '已连接';
             } catch (error) {
                 info.redis = '未连接';

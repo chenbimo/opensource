@@ -3,7 +3,7 @@ import { Logger } from '../utils/logger.js';
 
 export default {
     after: [],
-    async onInit(bunpii) {
+    async onInit(befly) {
         try {
             return Logger;
         } catch (error) {

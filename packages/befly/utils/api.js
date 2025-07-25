@@ -1,5 +1,5 @@
-import { Logger } from '../utils/logger.js';
-import { RYes, RNo } from '../utils/util.js';
+import { Logger } from './logger.js';
+import { RYes, RNo } from './util.js';
 export class Api {
     // GET 方法
     static GET(name, auth = false, fields = {}, required = [], handler) {

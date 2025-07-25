@@ -3,7 +3,7 @@ import { Logger } from '../utils/logger.js';
 
 export default {
     after: ['_logger'],
-    async onInit(bunpii) {
+    async onInit(befly) {
         try {
             if (Env.REDIS_ENABLE === 1) {
                 const config = {

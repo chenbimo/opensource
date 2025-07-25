@@ -1,4 +1,4 @@
-import { BunPii, Logger } from 'bunpii';
+import { BunPii, Logger } from 'befly';
 
 // 配置服务器
 const app = new BunPii({

@@ -4,7 +4,7 @@ import { Crud } from '../utils/curd.js';
 
 export default {
     after: ['_redis'],
-    async onInit(bunpii) {
+    async onInit(befly) {
         try {
             if (Env.MYSQL_ENABLE === 1) {
                 // 创建 MySQL 连接池
@@ -36,7 +36,7 @@ export default {
                 const result = await sql`SELECT VERSION() AS version`.execute(db);
                 if (result?.rows?.[0]?.version) {
                     // 扩展数据库实例
-                    return new Crud(db, bunpii.redis, sql);
+                    return new Crud(db, befly.redis, sql);
                 } else {
                     return {};
                 }
