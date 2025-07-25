@@ -1,5 +1,5 @@
 {
-    "name": "buma",
+    "name": "befly",
     "version": "0.1.25",
     "description": "Buma - 为 Bun 专属打造的 API 接口框架核心引擎",
     "type": "module",
@@ -49,5 +49,5 @@
         "README.md",
         "vitest.config.js"
     ],
-    "gitHead": "135a619dd0cd4d3e6faf9655f7b82d24d81cd2f1"
+    "gitHead": "1dc5f118a723969456559e758e2ba889f4601224"
 }
