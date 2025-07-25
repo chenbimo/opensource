@@ -1,6 +1,6 @@
 import { Env } from '../../config/env.js';
 import { Api } from '../../utils/api.js';
-import { ResultYes, ResultNo } from '../../utils/util.js';
+import { RYes, RNo } from '../../utils/util.js';
 
 export default Api.POST('健康检查', { auth: false }, {}, [], async (bunpii, ctx) => {
     const info = {
@@ -29,5 +29,5 @@ export default Api.POST('健康检查', { auth: false }, {}, [], async (bunpii, 
     } else {
         info.redis = '禁用';
     }
-    return ResultYes('健康检查成功', info);
+    return RYes('健康检查成功', info);
 });

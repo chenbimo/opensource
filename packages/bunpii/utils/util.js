@@ -148,7 +148,7 @@ export const isEmptyArray = (arr) => {
 };
 
 // 返回结果
-export const ResultYes = (msg = '', data = {}, other = {}) => {
+export const RYes = (msg = '', data = {}, other = {}) => {
     return {
         ...other,
         code: 0,
@@ -157,7 +157,7 @@ export const ResultYes = (msg = '', data = {}, other = {}) => {
     };
 };
 
-export const ResultNo = (msg = '', data = {}, other = {}) => {
+export const RNo = (msg = '', data = {}, other = {}) => {
     return {
         ...other,
         code: 1,

@@ -19,6 +19,15 @@ export class Crud {
         this.db.getCount = this.getCount.bind(this);
     }
 
+    // 事务方法
+    async trans(callback) {
+        return await this.db.transaction().execute(async (trx) => {
+            // 创建一个临时的 Crud 实例，使用事务连接
+            const transactionCrud = new Crud(trx, this.redis, this.sql);
+            return await callback(transactionCrud);
+        });
+    }
+
     // 增强的插入方法 - 自动添加 ID 和时间戳，支持链式调用
     insData(tableName, data) {
         const insertQuery = this.db.insertInto(tableName);

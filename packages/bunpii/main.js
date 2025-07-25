@@ -8,7 +8,7 @@ import { Jwt } from './utils/jwt.js';
 import { validator } from './utils/validate.js';
 import { Crypto2 } from './utils/crypto.js';
 import { XMLParser } from './libs/xml/XMLParser.js';
-import { isEmptyObject, pickFields, sortPlugins, ResultYes, ResultNo, filename2, dirname2 } from './utils/util.js';
+import { isEmptyObject, pickFields, sortPlugins, RYes, RNo, filename2, dirname2 } from './utils/util.js';
 
 class BunPii {
     constructor(options = {}) {
@@ -236,7 +236,7 @@ class BunPii {
                         const api = this.apiRoutes.get(apiPath);
 
                         // 接口不存在
-                        if (!api) return Response.json(ResultNo('接口不存在'));
+                        if (!api) return Response.json(RNo('接口不存在'));
 
                         const authHeader = req.headers.get('authorization');
                         if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -288,7 +288,7 @@ class BunPii {
                                     stack: err.stack
                                 });
 
-                                return Response.json(ResultNo('无效的请求参数格式'));
+                                return Response.json(RNo('无效的请求参数格式'));
                             }
                         }
 
@@ -318,17 +318,17 @@ class BunPii {
 
                         // 登录验证
                         if (api.auth === true && !ctx.user.id) {
-                            return Response.json(ResultNo('未登录'));
+                            return Response.json(RNo('未登录'));
                         }
 
                         if (api.auth && api.auth !== true && ctx.user.role !== api.auth) {
-                            return Response.json(ResultNo('没有权限'));
+                            return Response.json(RNo('没有权限'));
                         }
 
                         // 参数验证
                         const validate = validator.validate(ctx.body, api.fields, api.required);
                         if (validate.code !== 0) {
-                            return Response.json(ResultNo('无效的请求参数格式', validate.fields));
+                            return Response.json(RNo('无效的请求参数格式', validate.fields));
                         }
 
                         // 执行函数
@@ -347,7 +347,7 @@ class BunPii {
                             stack: error.stack,
                             url: req.url
                         });
-                        return Response.json(ResultNo('内部服务器错误'));
+                        return Response.json(RNo('内部服务器错误'));
                     }
                 },
                 '/*': async (req) => {
@@ -363,10 +363,10 @@ class BunPii {
                                 }
                             });
                         } else {
-                            return Response.json(ResultNo('文件未找到'));
+                            return Response.json(RNo('文件未找到'));
                         }
                     } catch (error) {
-                        return Response.json(ResultNo('文件读取失败'));
+                        return Response.json(RNo('文件读取失败'));
                     }
                 },
                 ...(this.appOptions.routes || {})
@@ -377,7 +377,7 @@ class BunPii {
                     error: error.message,
                     stack: error.stack
                 });
-                return Response.json(ResultNo('内部服务器错误'));
+                return Response.json(RNo('内部服务器错误'));
             }
         });
 
@@ -387,4 +387,4 @@ class BunPii {
     }
 }
 
-export { BunPii, Env, Api, Jwt, Crypto2, Logger, ResultYes, ResultNo };
+export { BunPii, Env, Api, Jwt, Crypto2, Logger, RYes, RNo };
