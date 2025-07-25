@@ -9,131 +9,176 @@ export class Crud {
     }
 
     initMethods() {
-        // 简单的便捷方法，不修改原有的 Kysely 方法
-
-        // 插入数据
+        // 将所有 CRUD 方法直接挂载到 db 实例上
         this.db.insData = this.insData.bind(this);
-
-        // 更新数据
         this.db.updData = this.updData.bind(this);
-
-        // 删除数据
         this.db.delData = this.delData.bind(this);
-
-        // 查询单条记录
-        this.db.getDetail = this.getDetail.bind(this);
-
-        // 查询所有记录
-        this.db.getAll = this.getAll.bind(this);
-
-        // 查询总数
-        this.db.getCount = this.getCount.bind(this);
-
-        // 分页查询
+        this.db.getOne = this.getOne.bind(this);
         this.db.getList = this.getList.bind(this);
+        this.db.getAll = this.getAll.bind(this);
+        this.db.getCount = this.getCount.bind(this);
     }
 
-    async insData(insertQuery, data) {
-        const now = Date.now();
+    // 增强的插入方法 - 自动添加 ID 和时间戳，支持链式调用
+    insData(tableName, data) {
+        const insertQuery = this.db.insertInto(tableName);
+        const redis = this.redis;
 
-        if (Array.isArray(data)) {
-            for (let item of data) {
-                item.id = await this.redis.genTimeID();
-                item.created_at = now;
-                item.updated_at = now;
+        insertQuery.exec = async function () {
+            const now = Date.now();
+            let processedData = data;
+
+            if (Array.isArray(data)) {
+                processedData = await Promise.all(
+                    data.map(async (item) => ({
+                        ...item,
+                        id: await redis.genTimeID(),
+                        created_at: now,
+                        updated_at: now
+                    }))
+                );
+            } else {
+                processedData = {
+                    ...data,
+                    id: await redis.genTimeID(),
+                    created_at: now,
+                    updated_at: now
+                };
             }
-        } else {
-            data.id = await this.redis.genTimeID();
-            data.created_at = now;
-            data.updated_at = now;
-        }
 
-        await insertQuery.values(data).executeTakeFirst();
-        return Array.isArray(data) ? { ids: data.map((item) => item.id) } : { ids: [data.id] };
-    }
-
-    async updData(updateQuery, data) {
-        data.updated_at = Date.now();
-        const updateData = omitFields(data, ['id', 'created_at', 'deleted_at']);
-        await updateQuery.set(updateData).execute();
-        return {};
-    }
-
-    async delData(deleteQuery) {
-        return await deleteQuery.executeTakeFirst();
-    }
-
-    async getDetail(selectQuery, fields) {
-        if (fields) {
-            return await selectQuery.select(fields).executeTakeFirst();
-        }
-        return await selectQuery.selectAll().executeTakeFirst();
-    }
-
-    async getAll(selectQuery, fields) {
-        if (fields) {
-            return await selectQuery.select(fields).execute();
-        }
-        return await selectQuery.selectAll().execute();
-    }
-
-    async getCount(selectQuery, countField = 'id') {
-        const countQuery = selectQuery.select(this.sql`count(${this.sql.raw(countField)})`.as('total'));
-        const result = await countQuery.executeTakeFirst();
-        return Number(result?.total || 0);
-    }
-
-    async getList(table, options = {}) {
-        const { where = null, page = 1, pageSize = 10, fields = null, orderBy = null } = options;
-
-        const offset = (page - 1) * pageSize;
-
-        // 数据查询
-        let dataQuery = this.db.selectFrom(table);
-        if (fields) {
-            dataQuery = dataQuery.select(fields);
-        } else {
-            dataQuery = dataQuery.selectAll();
-        }
-
-        // 计数查询
-        let countQuery = this.db.selectFrom(table).select(this.sql`count(*)`.as('total'));
-
-        // 添加 where 条件
-        if (where) {
-            if (Array.isArray(where)) {
-                where.forEach((condition) => {
-                    dataQuery = dataQuery.where(condition[0], condition[1], condition[2]);
-                    countQuery = countQuery.where(condition[0], condition[1], condition[2]);
-                });
-            } else if (typeof where === 'object') {
-                Object.entries(where).forEach(([key, value]) => {
-                    dataQuery = dataQuery.where(key, '=', value);
-                    countQuery = countQuery.where(key, '=', value);
-                });
-            }
-        }
-
-        // 排序和分页
-        if (orderBy) {
-            dataQuery = dataQuery.orderBy(orderBy[0], orderBy[1] || 'asc');
-        }
-        dataQuery = dataQuery.limit(pageSize).offset(offset);
-
-        const [data, countResult] = await Promise.all([dataQuery.execute(), countQuery.executeTakeFirst()]);
-
-        const total = Number(countResult?.total || 0);
-
-        return {
-            data,
-            total,
-            page,
-            pageSize,
-            totalPages: Math.ceil(total / pageSize)
+            const result = await this.values(processedData).execute();
+            return processedData; // 直接返回处理后的数据
         };
+
+        return insertQuery;
     }
 
-    getDatabase() {
+    // 增强的更新方法 - 自动添加 updated_at，支持链式调用
+    updData(tableName, data) {
+        const updateData = {
+            ...omitFields(data, ['id', 'created_at', 'deleted_at']),
+            updated_at: Date.now()
+        };
+
+        const updateQuery = this.db.updateTable(tableName).set(updateData);
+
+        updateQuery.exec = async function () {
+            const result = await this.execute();
+            return result; // 直接返回执行结果
+        };
+
+        return updateQuery;
+    }
+
+    // 增强的删除方法 - 支持链式调用
+    delData(tableName) {
+        const deleteQuery = this.db.deleteFrom(tableName);
+
+        deleteQuery.exec = async function () {
+            const result = await this.execute();
+            return result; // 直接返回执行结果
+        };
+
+        return deleteQuery;
+    }
+
+    // 查询单条记录 - 支持链式调用
+    getOne(tableName, fields) {
+        let selectQuery;
+
+        if (fields) {
+            selectQuery = Array.isArray(fields) ? this.db.selectFrom(tableName).select(fields) : this.db.selectFrom(tableName).select([fields]);
+        } else {
+            selectQuery = this.db.selectFrom(tableName).selectAll();
+        }
+
+        // 添加 exec 方法，自动返回单条记录
+        selectQuery.exec = async function () {
+            return await this.executeTakeFirst();
+        };
+
+        return selectQuery;
+    }
+
+    // 查询列表 - 支持链式调用和分页
+    getList(tableName, fields) {
+        let selectQuery;
+
+        if (fields) {
+            selectQuery = Array.isArray(fields) ? this.db.selectFrom(tableName).select(fields) : this.db.selectFrom(tableName).select([fields]);
+        } else {
+            selectQuery = this.db.selectFrom(tableName).selectAll();
+        }
+
+        const db = this.db;
+        const sql = this.sql;
+
+        // 添加分页查询方法
+        selectQuery.paginate = async function (page = 1, pageSize = 10) {
+            const offset = (page - 1) * pageSize;
+
+            // 构建计数查询
+            const baseCountQuery = db.selectFrom(tableName).select(sql`count(*)`.as('total'));
+
+            const [data, countResult] = await Promise.all([this.limit(pageSize).offset(offset).execute(), baseCountQuery.executeTakeFirst()]);
+
+            const total = Number(countResult?.total || 0);
+
+            return {
+                data,
+                pagination: {
+                    page,
+                    pageSize,
+                    total,
+                    totalPages: Math.ceil(total / pageSize),
+                    hasNext: page * pageSize < total,
+                    hasPrev: page > 1
+                }
+            };
+        };
+
+        // 添加 exec 方法
+        selectQuery.exec = async function () {
+            return await this.execute();
+        };
+
+        return selectQuery;
+    }
+
+    // 查询所有记录 - 支持链式调用
+    getAll(tableName, fields) {
+        let selectQuery;
+
+        if (fields) {
+            selectQuery = Array.isArray(fields) ? this.db.selectFrom(tableName).select(fields) : this.db.selectFrom(tableName).select([fields]);
+        } else {
+            selectQuery = this.db.selectFrom(tableName).selectAll();
+        }
+
+        // 添加 exec 方法，执行查询所有记录
+        selectQuery.exec = async function () {
+            return await this.execute();
+        };
+
+        return selectQuery;
+    }
+
+    // 便捷的计数方法 - 支持链式调用
+    getCount(tableName) {
+        const sql = this.sql;
+        const countQuery = this.db.selectFrom(tableName).select(sql`count(*)`.as('total'));
+
+        // 添加便捷的 exec 方法
+        countQuery.exec = async function () {
+            const result = await this.executeTakeFirst();
+            return Number(result?.total || 0); // 直接返回计数数字
+        };
+
+        return countQuery;
+    }
+
+    // 获取原始数据库实例
+    getDb() {
         return this.db;
     }
 }
