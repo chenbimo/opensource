@@ -55,11 +55,7 @@ export const formatDate = (date = new Date(), format = 'YYYY-MM-DD HH:mm:ss') =>
 
 // 类型判断
 export const isType = (value, type) => {
-    const getType = (val) => {
-        return Object.prototype.toString.call(val).slice(8, -1).toLowerCase();
-    };
-
-    const actualType = getType(value);
+    const actualType = Object.prototype.toString.call(value).slice(8, -1).toLowerCase();
     const expectedType = type.toLowerCase();
 
     // 特殊类型处理

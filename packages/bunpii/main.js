@@ -8,7 +8,7 @@ import { Jwt } from './utils/jwt.js';
 import { validator } from './utils/validate.js';
 import { Crypto2 } from './utils/crypto.js';
 import { XMLParser } from './libs/xml/XMLParser.js';
-import { isEmptyObject, pickFields, sortPlugins, RYes, RNo, filename2, dirname2 } from './utils/util.js';
+import { isEmptyObject, isType, pickFields, sortPlugins, RYes, RNo, filename2, dirname2 } from './utils/util.js';
 
 class BunPii {
     constructor(options = {}) {
@@ -183,6 +183,25 @@ class BunPii {
                 if (apiPath.indexOf('_') !== -1) continue;
                 const api = await import(file);
                 const apiInstance = api.default;
+                if (isType(api.name, 'string') === false || api.name.trim() === '') {
+                    throw new Error(`接口 ${apiPath} 的 name 属性必须是非空字符串`);
+                }
+                if (api.auth !== false && api.auth !== true && Array.isArray(api.auth) === false) {
+                    throw new Error(`接口 ${apiPath} 的 auth 属性必须是布尔值或字符串数组`);
+                }
+                if (isType(api.fields, 'object') === false) {
+                    throw new Error(`接口 ${apiPath} 的 fields 属性必须是对象`);
+                }
+                if (isType(api.required, 'array') === false) {
+                    throw new Error(`接口 ${apiPath} 的 required 属性必须是数组`);
+                }
+                // 数组的每一项都必须是字符串
+                if (api.required.some((item) => isType(item, 'string') === false)) {
+                    throw new Error(`接口 ${apiPath} 的 required 属性必须是字符串数组`);
+                }
+                if (isType(api.handler, 'function') === false) {
+                    throw new Error(`接口 ${apiPath} 的 handler 属性必须是函数`);
+                }
                 apiInstance.route = `${apiInstance.method.toUpperCase()}/api/${dirName}/${apiPath}`;
                 this.apiRoutes.set(apiInstance.route, apiInstance);
             }
@@ -219,6 +238,7 @@ class BunPii {
                 },
                 '/api/*': async (req) => {
                     try {
+                        // 直接返回options请求
                         if (req.method === 'OPTIONS') {
                             return new Response();
                         }
@@ -316,7 +336,7 @@ class BunPii {
                             请求体: ctx.body
                         });
 
-                        // 登录验证
+                        // 登录验证 auth 有3种值 分别为 true、false、['admin', 'user']
                         if (api.auth === true && !ctx.user.id) {
                             return Response.json(RNo('未登录'));
                         }

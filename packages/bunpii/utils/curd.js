@@ -126,32 +126,11 @@ export class Crud {
         // 默认过滤软删除的数据
         selectQuery = selectQuery.where('state', '<>', 2);
 
-        const db = this.db;
-        const sql = this.sql;
-
-        // 添加 exec 方法 - 默认支持分页
+        // 添加 exec 方法 - 支持分页，只返回数据列表
         selectQuery.exec = async function () {
             const offset = (page - 1) * pageSize;
-
-            // 构建计数查询，也要过滤软删除的数据
-            const baseCountQuery = db
-                .selectFrom(tableName)
-                .select(sql`count(*)`.as('total'))
-                .where('state', '<>', 2);
-
-            const [data, countResult] = await Promise.all([this.limit(pageSize).offset(offset).execute(), baseCountQuery.executeTakeFirst()]);
-
-            const total = Number(countResult?.total || 0);
-
-            return {
-                data,
-                page,
-                pageSize,
-                total,
-                totalPages: Math.ceil(total / pageSize),
-                hasNext: page * pageSize < total,
-                hasPrev: page > 1
-            };
+            const result = await this.limit(pageSize).offset(offset).execute();
+            return { data: result };
         };
 
         return selectQuery;
@@ -190,8 +169,8 @@ export class Crud {
         // 添加便捷的 exec 方法
         countQuery.exec = async function () {
             const result = await this.executeTakeFirst();
-            const result = Number(result?.total || 0);
-            return { data: result }; // 返回统一格式
+            const count = Number(result?.total || 0);
+            return { data: count }; // 返回统一格式
         };
 
         return countQuery;
