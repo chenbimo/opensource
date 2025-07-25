@@ -92,6 +92,9 @@ export class Crud {
             selectQuery = this.db.selectFrom(tableName).selectAll();
         }
 
+        // 默认过滤软删除的数据
+        selectQuery = selectQuery.where('state', '<>', 2);
+
         // 添加 exec 方法，自动返回单条记录
         selectQuery.exec = async function () {
             return await this.executeTakeFirst();
@@ -110,6 +113,9 @@ export class Crud {
             selectQuery = this.db.selectFrom(tableName).selectAll();
         }
 
+        // 默认过滤软删除的数据
+        selectQuery = selectQuery.where('state', '<>', 2);
+
         const db = this.db;
         const sql = this.sql;
 
@@ -117,8 +123,11 @@ export class Crud {
         selectQuery.paginate = async function (page = 1, pageSize = 10) {
             const offset = (page - 1) * pageSize;
 
-            // 构建计数查询
-            const baseCountQuery = db.selectFrom(tableName).select(sql`count(*)`.as('total'));
+            // 构建计数查询，也要过滤软删除的数据
+            const baseCountQuery = db
+                .selectFrom(tableName)
+                .select(sql`count(*)`.as('total'))
+                .where('state', '<>', 2);
 
             const [data, countResult] = await Promise.all([this.limit(pageSize).offset(offset).execute(), baseCountQuery.executeTakeFirst()]);
 
@@ -155,6 +164,9 @@ export class Crud {
             selectQuery = this.db.selectFrom(tableName).selectAll();
         }
 
+        // 默认过滤软删除的数据
+        selectQuery = selectQuery.where('state', '<>', 2);
+
         // 添加 exec 方法，执行查询所有记录
         selectQuery.exec = async function () {
             return await this.execute();
@@ -166,7 +178,10 @@ export class Crud {
     // 便捷的计数方法 - 支持链式调用
     getCount(tableName) {
         const sql = this.sql;
-        const countQuery = this.db.selectFrom(tableName).select(sql`count(*)`.as('total'));
+        const countQuery = this.db
+            .selectFrom(tableName)
+            .select(sql`count(*)`.as('total'))
+            .where('state', '<>', 2);
 
         // 添加便捷的 exec 方法
         countQuery.exec = async function () {
