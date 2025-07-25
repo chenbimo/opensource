@@ -6,32 +6,32 @@ export const nameRegexp = '[' + nameStartChar + '][' + nameChar + ']*';
 const regexName = new RegExp('^' + nameRegexp + '$');
 
 export function getAllMatches(string, regex) {
-  const matches = [];
-  let match = regex.exec(string);
-  while (match) {
-    const allmatches = [];
-    allmatches.startIndex = regex.lastIndex - match[0].length;
-    const len = match.length;
-    for (let index = 0; index < len; index++) {
-      allmatches.push(match[index]);
+    const matches = [];
+    let match = regex.exec(string);
+    while (match) {
+        const allmatches = [];
+        allmatches.startIndex = regex.lastIndex - match[0].length;
+        const len = match.length;
+        for (let index = 0; index < len; index++) {
+            allmatches.push(match[index]);
+        }
+        matches.push(allmatches);
+        match = regex.exec(string);
     }
-    matches.push(allmatches);
-    match = regex.exec(string);
-  }
-  return matches;
+    return matches;
 }
 
-export const isName = function(string) {
-  const match = regexName.exec(string);
-  return !(match === null || typeof match === 'undefined');
-}
+export const isName = function (string) {
+    const match = regexName.exec(string);
+    return !(match === null || typeof match === 'undefined');
+};
 
 export function isExist(v) {
-  return typeof v !== 'undefined';
+    return typeof v !== 'undefined';
 }
 
 export function isEmptyObject(obj) {
-  return Object.keys(obj).length === 0;
+    return Object.keys(obj).length === 0;
 }
 
 /**
@@ -40,28 +40,28 @@ export function isEmptyObject(obj) {
  * @param {*} a
  */
 export function merge(target, a, arrayMode) {
-  if (a) {
-    const keys = Object.keys(a); // will return an array of own properties
-    const len = keys.length; //don't make it inline
-    for (let i = 0; i < len; i++) {
-      if (arrayMode === 'strict') {
-        target[keys[i]] = [ a[keys[i]] ];
-      } else {
-        target[keys[i]] = a[keys[i]];
-      }
+    if (a) {
+        const keys = Object.keys(a); // will return an array of own properties
+        const len = keys.length; //don't make it inline
+        for (let i = 0; i < len; i++) {
+            if (arrayMode === 'strict') {
+                target[keys[i]] = [a[keys[i]]];
+            } else {
+                target[keys[i]] = a[keys[i]];
+            }
+        }
     }
-  }
 }
 /* exports.merge =function (b,a){
   return Object.assign(b,a);
 } */
 
 export function getValue(v) {
-  if (exports.isExist(v)) {
-    return v;
-  } else {
-    return '';
-  }
+    if (exports.isExist(v)) {
+        return v;
+    } else {
+        return '';
+    }
 }
 
 // const fakeCall = function(a) {return a;};

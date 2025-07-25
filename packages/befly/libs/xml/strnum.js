@@ -60,8 +60,10 @@ export default function toNumber(str, options = {}) {
                     else return str;
                 } else if (trimmedStr.indexOf('.') !== -1) {
                     //floating number
-                    if (parsedStr === '0') return num; //0.0
-                    else if (parsedStr === numTrimmedByZeros) return num; //0.456. 0.79000
+                    if (parsedStr === '0')
+                        return num; //0.0
+                    else if (parsedStr === numTrimmedByZeros)
+                        return num; //0.456. 0.79000
                     else if (parsedStr === `${sign}${numTrimmedByZeros}`) return num;
                     else return str;
                 }
