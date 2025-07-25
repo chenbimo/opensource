@@ -56,7 +56,7 @@ export class Crud {
             }
 
             const result = await this.values(processedData).execute();
-            return processedData; // 直接返回处理后的数据
+            return { data: result }; // 返回统一格式
         };
 
         return insertQuery;
@@ -73,7 +73,7 @@ export class Crud {
 
         updateQuery.exec = async function () {
             const result = await this.execute();
-            return result; // 直接返回执行结果
+            return { data: result }; // 返回统一格式
         };
 
         return updateQuery;
@@ -85,7 +85,7 @@ export class Crud {
 
         deleteQuery.exec = async function () {
             const result = await this.execute();
-            return result; // 直接返回执行结果
+            return { data: result }; // 返回统一格式
         };
 
         return deleteQuery;
@@ -106,14 +106,15 @@ export class Crud {
 
         // 添加 exec 方法，自动返回单条记录
         selectQuery.exec = async function () {
-            return await this.executeTakeFirst();
+            const result = await this.executeTakeFirst();
+            return { data: result }; // 返回统一格式
         };
 
         return selectQuery;
     }
 
     // 查询列表 - 支持链式调用和分页
-    getList(tableName, fields) {
+    getList(tableName, fields, page = 1, pageSize = 20) {
         let selectQuery;
 
         if (fields) {
@@ -128,8 +129,8 @@ export class Crud {
         const db = this.db;
         const sql = this.sql;
 
-        // 添加分页查询方法
-        selectQuery.paginate = async function (page = 1, pageSize = 10) {
+        // 添加 exec 方法 - 默认支持分页
+        selectQuery.exec = async function () {
             const offset = (page - 1) * pageSize;
 
             // 构建计数查询，也要过滤软删除的数据
@@ -144,20 +145,13 @@ export class Crud {
 
             return {
                 data,
-                pagination: {
-                    page,
-                    pageSize,
-                    total,
-                    totalPages: Math.ceil(total / pageSize),
-                    hasNext: page * pageSize < total,
-                    hasPrev: page > 1
-                }
+                page,
+                pageSize,
+                total,
+                totalPages: Math.ceil(total / pageSize),
+                hasNext: page * pageSize < total,
+                hasPrev: page > 1
             };
-        };
-
-        // 添加 exec 方法
-        selectQuery.exec = async function () {
-            return await this.execute();
         };
 
         return selectQuery;
@@ -178,7 +172,8 @@ export class Crud {
 
         // 添加 exec 方法，执行查询所有记录
         selectQuery.exec = async function () {
-            return await this.execute();
+            const result = await this.execute();
+            return { data: result }; // 返回统一格式
         };
 
         return selectQuery;
@@ -195,7 +190,8 @@ export class Crud {
         // 添加便捷的 exec 方法
         countQuery.exec = async function () {
             const result = await this.executeTakeFirst();
-            return Number(result?.total || 0); // 直接返回计数数字
+            const result = Number(result?.total || 0);
+            return { data: result }; // 返回统一格式
         };
 
         return countQuery;
