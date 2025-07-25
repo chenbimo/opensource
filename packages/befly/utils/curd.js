@@ -64,8 +64,11 @@ export class Crud {
 
     // 增强的更新方法 - 自动添加 updated_at，支持链式调用
     updData(tableName, data) {
+        // 剔除 undefined 值
+        const filteredData = Object.fromEntries(Object.entries(data).filter(([key, value]) => value !== undefined));
+
         const updateData = {
-            ...omitFields(data, ['id', 'created_at', 'deleted_at']),
+            ...omitFields(filteredData, ['id', 'created_at', 'deleted_at']),
             updated_at: Date.now()
         };
 
