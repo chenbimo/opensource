@@ -9,7 +9,7 @@ export class Api {
             auth: auth,
             fields: fields,
             required: required,
-            handler: await handler(bp, ctx, req)
+            handler: async (befly, ctx, req) => await handler(befly, ctx, req)
         };
     }
 
@@ -21,7 +21,7 @@ export class Api {
             auth: auth,
             fields: fields,
             required: required,
-            handler: await handler(bp, ctx, req)
+            handler: async (befly, ctx, req) => await handler(befly, ctx, req)
         };
     }
 }
