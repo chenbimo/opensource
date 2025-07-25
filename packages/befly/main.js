@@ -181,8 +181,7 @@ class BunPii {
                 const fileName = path.basename(file, '.js');
                 const apiPath = path.relative(apiDir, file).replace(/\.js$/, '').replace(/\\/g, '/');
                 if (apiPath.indexOf('_') !== -1) continue;
-                const api = await import(file);
-                const apiInstance = api.default;
+                const api = (await import(file)).default;
                 if (isType(api.name, 'string') === false || api.name.trim() === '') {
                     throw new Error(`接口 ${apiPath} 的 name 属性必须是非空字符串`);
                 }
@@ -202,8 +201,8 @@ class BunPii {
                 if (isType(api.handler, 'function') === false) {
                     throw new Error(`接口 ${apiPath} 的 handler 属性必须是函数`);
                 }
-                apiInstance.route = `${apiInstance.method.toUpperCase()}/api/${dirName}/${apiPath}`;
-                this.apiRoutes.set(apiInstance.route, apiInstance);
+                api.route = `${api.method.toUpperCase()}/api/${dirName}/${apiPath}`;
+                this.apiRoutes.set(api.route, api);
             }
         } catch (error) {
             Logger.error({
