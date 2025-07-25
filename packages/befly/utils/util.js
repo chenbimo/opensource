@@ -86,6 +86,8 @@ export const isType = (value, type) => {
             return value !== Object(value);
         case 'reference':
             return value === Object(value);
+        case 'function':
+            return typeof value === 'function';
         default:
             return actualType === expectedType;
     }
