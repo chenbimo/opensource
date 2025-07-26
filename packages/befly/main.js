@@ -88,12 +88,17 @@ class BunPii {
 
     async loadPlugins() {
         try {
+            const loadStartTime = Bun.nanoseconds();
+            Logger.info('开始加载插件...');
+
             const glob = new Bun.Glob('*.js');
             const corePlugins = [];
             const userPlugins = [];
             const loadedPluginNames = new Set(); // 用于跟踪已加载的插件名称
 
-            // 扫描指定目录
+            // 扫描核心插件目录
+            Logger.info('正在扫描核心插件...');
+            const corePluginsScanStart = Bun.nanoseconds();
             for await (const file of glob.scan({
                 cwd: path.join(dirname2(import.meta.url), 'plugins'),
                 onlyFiles: true,
@@ -101,12 +106,20 @@ class BunPii {
             })) {
                 const fileName = path.basename(file, '.js');
                 if (fileName.startsWith('_')) continue;
+
+                const importStart = Bun.nanoseconds();
                 const plugin = await import(file);
+                const importTime = (Bun.nanoseconds() - importStart) / 1_000_000; // 转换为毫秒
+
                 const pluginInstance = plugin.default;
                 pluginInstance.pluginName = fileName;
                 corePlugins.push(pluginInstance);
                 loadedPluginNames.add(fileName); // 记录已加载的核心插件名称
+
+                Logger.info(`核心插件 ${fileName} 导入耗时: ${importTime.toFixed(2)}ms`);
             }
+            const corePluginsScanTime = (Bun.nanoseconds() - corePluginsScanStart) / 1_000_000;
+            Logger.info(`核心插件扫描完成，耗时: ${corePluginsScanTime.toFixed(2)}ms，共找到 ${corePlugins.length} 个插件`);
 
             const sortedCorePlugins = sortPlugins(corePlugins);
             if (sortedCorePlugins === false) {
@@ -114,16 +127,26 @@ class BunPii {
                 process.exit();
             }
 
+            // 初始化核心插件
+            Logger.info('正在初始化核心插件...');
+            const corePluginsInitStart = Bun.nanoseconds();
             for (const plugin of sortedCorePlugins) {
                 try {
+                    const initStart = Bun.nanoseconds();
                     this.pluginLists.push(plugin);
                     this.appContext[plugin.pluginName] = typeof plugin?.onInit === 'function' ? await plugin?.onInit(this.appContext) : {};
+                    const initTime = (Bun.nanoseconds() - initStart) / 1_000_000;
+                    Logger.info(`核心插件 ${plugin.pluginName} 初始化耗时: ${initTime.toFixed(2)}ms`);
                 } catch (error) {
                     Logger.warn(`插件 ${plugin.pluginName} 初始化失败:`, error.message);
                 }
             }
+            const corePluginsInitTime = (Bun.nanoseconds() - corePluginsInitStart) / 1_000_000;
+            Logger.info(`核心插件初始化完成，耗时: ${corePluginsInitTime.toFixed(2)}ms`);
 
-            // 扫描指定目录
+            // 扫描用户插件目录
+            Logger.info('正在扫描用户插件...');
+            const userPluginsScanStart = Bun.nanoseconds();
             for await (const file of glob.scan({
                 cwd: path.join(process.cwd(), 'plugins'),
                 onlyFiles: true,
@@ -138,11 +161,18 @@ class BunPii {
                     continue;
                 }
 
+                const importStart = Bun.nanoseconds();
                 const plugin = await import(file);
+                const importTime = (Bun.nanoseconds() - importStart) / 1_000_000; // 转换为毫秒
+
                 const pluginInstance = plugin.default;
                 pluginInstance.pluginName = fileName;
                 userPlugins.push(pluginInstance);
+
+                Logger.info(`用户插件 ${fileName} 导入耗时: ${importTime.toFixed(2)}ms`);
             }
+            const userPluginsScanTime = (Bun.nanoseconds() - userPluginsScanStart) / 1_000_000;
+            Logger.info(`用户插件扫描完成，耗时: ${userPluginsScanTime.toFixed(2)}ms，共找到 ${userPlugins.length} 个插件`);
 
             const sortedUserPlugins = sortPlugins(userPlugins);
             if (sortedUserPlugins === false) {
@@ -150,14 +180,28 @@ class BunPii {
                 process.exit();
             }
 
-            for (const plugin of sortedUserPlugins) {
-                try {
-                    this.pluginLists.push(plugin);
-                    this.appContext[plugin.pluginName] = typeof plugin?.onInit === 'function' ? await plugin?.onInit(this.appContext) : {};
-                } catch (error) {
-                    Logger.warn(`插件 ${plugin.pluginName} 初始化失败:`, error.message);
+            // 初始化用户插件
+            if (userPlugins.length > 0) {
+                Logger.info('正在初始化用户插件...');
+                const userPluginsInitStart = Bun.nanoseconds();
+                for (const plugin of sortedUserPlugins) {
+                    try {
+                        const initStart = Bun.nanoseconds();
+                        this.pluginLists.push(plugin);
+                        this.appContext[plugin.pluginName] = typeof plugin?.onInit === 'function' ? await plugin?.onInit(this.appContext) : {};
+                        const initTime = (Bun.nanoseconds() - initStart) / 1_000_000;
+                        Logger.info(`用户插件 ${plugin.pluginName} 初始化耗时: ${initTime.toFixed(2)}ms`);
+                    } catch (error) {
+                        Logger.warn(`插件 ${plugin.pluginName} 初始化失败:`, error.message);
+                    }
                 }
+                const userPluginsInitTime = (Bun.nanoseconds() - userPluginsInitStart) / 1_000_000;
+                Logger.info(`用户插件初始化完成，耗时: ${userPluginsInitTime.toFixed(2)}ms`);
             }
+
+            const totalLoadTime = (Bun.nanoseconds() - loadStartTime) / 1_000_000;
+            const totalPluginCount = sortedCorePlugins.length + sortedUserPlugins.length;
+            Logger.info(`插件加载完成! 总耗时: ${totalLoadTime.toFixed(2)}ms，共加载 ${totalPluginCount} 个插件`);
         } catch (error) {
             Logger.error({
                 msg: '加载插件时发生错误',
@@ -327,7 +371,7 @@ class BunPii {
                         }
 
                         // 请求记录
-                        Logger.debug({
+                        Logger.info({
                             msg: '通用接口日志',
                             请求路径: apiPath,
                             请求方法: req.method,
