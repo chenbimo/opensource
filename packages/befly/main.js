@@ -20,6 +20,9 @@ class BunPii {
 
     async initCheck() {
         try {
+            const checkStartTime = Bun.nanoseconds();
+            Logger.info('开始执行系统检查...');
+
             const checksDir = path.join(dirname2(import.meta.url), 'checks');
             const glob = new Bun.Glob('*.js');
 
@@ -39,6 +42,7 @@ class BunPii {
 
                 try {
                     totalChecks++;
+                    const singleCheckStart = Bun.nanoseconds();
 
                     // 导入检查模块
                     const check = await import(file);
@@ -46,19 +50,24 @@ class BunPii {
                     // 执行默认导出的函数
                     if (typeof check.default === 'function') {
                         const checkResult = await check.default(this.appContext);
+                        const singleCheckTime = (Bun.nanoseconds() - singleCheckStart) / 1_000_000;
+
                         if (checkResult === true) {
                             passedChecks++;
+                            Logger.info(`检查 ${fileName} 通过，耗时: ${singleCheckTime.toFixed(2)}ms`);
                         } else {
-                            Logger.error(`检查未通过: ${fileName}`);
+                            Logger.error(`检查未通过: ${fileName}，耗时: ${singleCheckTime.toFixed(2)}ms`);
                             failedChecks++;
                         }
                     } else {
-                        Logger.warn(`文件 ${fileName} 未导出默认函数`);
+                        const singleCheckTime = (Bun.nanoseconds() - singleCheckStart) / 1_000_000;
+                        Logger.warn(`文件 ${fileName} 未导出默认函数，耗时: ${singleCheckTime.toFixed(2)}ms`);
                         failedChecks++;
                     }
                 } catch (error) {
+                    const singleCheckTime = (Bun.nanoseconds() - singleCheckStart) / 1_000_000;
                     Logger.error({
-                        msg: `检查失败 ${fileName}`,
+                        msg: `检查失败 ${fileName}，耗时: ${singleCheckTime.toFixed(2)}ms`,
                         error: error.message,
                         stack: error.stack
                     });
@@ -66,8 +75,10 @@ class BunPii {
                 }
             }
 
+            const totalCheckTime = (Bun.nanoseconds() - checkStartTime) / 1_000_000;
+
             // 输出检查结果统计
-            Logger.info(`总检查数: ${totalChecks}, 通过: ${passedChecks}, 失败: ${failedChecks}`);
+            Logger.info(`系统检查完成! 总耗时: ${totalCheckTime.toFixed(2)}ms，总检查数: ${totalChecks}, 通过: ${passedChecks}, 失败: ${failedChecks}`);
 
             if (failedChecks > 0) {
                 process.exit();
@@ -78,7 +89,7 @@ class BunPii {
             }
         } catch (error) {
             Logger.error({
-                msg: '加载接口时发生错误',
+                msg: '执行系统检查时发生错误',
                 error: error.message,
                 stack: error.stack
             });
@@ -212,10 +223,19 @@ class BunPii {
     }
     async loadApis(dirName) {
         try {
+            const loadStartTime = Bun.nanoseconds();
+            const dirDisplayName = dirName === 'core' ? '核心' : '用户';
+            Logger.info(`开始加载${dirDisplayName}接口...`);
+
             const coreApisDir = path.join(dirname2(import.meta.url), 'apis');
             const userApisDir = path.join(process.cwd(), 'apis');
             const glob = new Bun.Glob('**/*.js');
             const apiDir = dirName === 'core' ? coreApisDir : userApisDir;
+
+            let totalApis = 0;
+            let loadedApis = 0;
+            let failedApis = 0;
+
             // 扫描指定目录
             for await (const file of glob.scan({
                 cwd: apiDir,
@@ -225,29 +245,50 @@ class BunPii {
                 const fileName = path.basename(file, '.js');
                 const apiPath = path.relative(apiDir, file).replace(/\.js$/, '').replace(/\\/g, '/');
                 if (apiPath.indexOf('_') !== -1) continue;
-                const api = (await import(file)).default;
-                if (isType(api.name, 'string') === false || api.name.trim() === '') {
-                    throw new Error(`接口 ${apiPath} 的 name 属性必须是非空字符串`);
+
+                totalApis++;
+                const singleApiStart = Bun.nanoseconds();
+
+                try {
+                    const api = (await import(file)).default;
+                    if (isType(api.name, 'string') === false || api.name.trim() === '') {
+                        throw new Error(`接口 ${apiPath} 的 name 属性必须是非空字符串`);
+                    }
+                    if (api.auth !== false && api.auth !== true && Array.isArray(api.auth) === false) {
+                        throw new Error(`接口 ${apiPath} 的 auth 属性必须是布尔值或字符串数组`);
+                    }
+                    if (isType(api.fields, 'object') === false) {
+                        throw new Error(`接口 ${apiPath} 的 fields 属性必须是对象`);
+                    }
+                    if (isType(api.required, 'array') === false) {
+                        throw new Error(`接口 ${apiPath} 的 required 属性必须是数组`);
+                    }
+                    // 数组的每一项都必须是字符串
+                    if (api.required.some((item) => isType(item, 'string') === false)) {
+                        throw new Error(`接口 ${apiPath} 的 required 属性必须是字符串数组`);
+                    }
+                    if (isType(api.handler, 'function') === false) {
+                        throw new Error(`接口 ${apiPath} 的 handler 属性必须是函数`);
+                    }
+                    api.route = `${api.method.toUpperCase()}/api/${dirName}/${apiPath}`;
+                    this.apiRoutes.set(api.route, api);
+
+                    const singleApiTime = (Bun.nanoseconds() - singleApiStart) / 1_000_000;
+                    loadedApis++;
+                    // Logger.info(`${dirDisplayName}接口 ${apiPath} 加载成功，耗时: ${singleApiTime.toFixed(2)}ms`);
+                } catch (error) {
+                    const singleApiTime = (Bun.nanoseconds() - singleApiStart) / 1_000_000;
+                    failedApis++;
+                    Logger.error({
+                        msg: `${dirDisplayName}接口 ${apiPath} 加载失败，耗时: ${singleApiTime.toFixed(2)}ms`,
+                        error: error.message,
+                        stack: error.stack
+                    });
                 }
-                if (api.auth !== false && api.auth !== true && Array.isArray(api.auth) === false) {
-                    throw new Error(`接口 ${apiPath} 的 auth 属性必须是布尔值或字符串数组`);
-                }
-                if (isType(api.fields, 'object') === false) {
-                    throw new Error(`接口 ${apiPath} 的 fields 属性必须是对象`);
-                }
-                if (isType(api.required, 'array') === false) {
-                    throw new Error(`接口 ${apiPath} 的 required 属性必须是数组`);
-                }
-                // 数组的每一项都必须是字符串
-                if (api.required.some((item) => isType(item, 'string') === false)) {
-                    throw new Error(`接口 ${apiPath} 的 required 属性必须是字符串数组`);
-                }
-                if (isType(api.handler, 'function') === false) {
-                    throw new Error(`接口 ${apiPath} 的 handler 属性必须是函数`);
-                }
-                api.route = `${api.method.toUpperCase()}/api/${dirName}/${apiPath}`;
-                this.apiRoutes.set(api.route, api);
             }
+
+            const totalLoadTime = (Bun.nanoseconds() - loadStartTime) / 1_000_000;
+            Logger.info(`${dirDisplayName}接口加载完成! 总耗时: ${totalLoadTime.toFixed(2)}ms，总数: ${totalApis}, 成功: ${loadedApis}, 失败: ${failedApis}`);
         } catch (error) {
             Logger.error({
                 msg: '加载接口时发生错误',
@@ -261,10 +302,16 @@ class BunPii {
      * 启动服务器
      */
     async listen(callback) {
+        const serverStartTime = Bun.nanoseconds();
+        Logger.info('开始启动 BunPii 服务器...');
+
         await this.initCheck();
         await this.loadPlugins();
         await this.loadApis('core');
         await this.loadApis('app');
+
+        const totalStartupTime = (Bun.nanoseconds() - serverStartTime) / 1_000_000;
+        Logger.info(`服务器启动准备完成，总耗时: ${totalStartupTime.toFixed(2)}ms`);
 
         const server = Bun.serve({
             port: Env.APP_PORT,
@@ -443,6 +490,10 @@ class BunPii {
                 return Response.json(RNo('内部服务器错误'));
             }
         });
+
+        const finalStartupTime = (Bun.nanoseconds() - serverStartTime) / 1_000_000;
+        Logger.info(`🚀 BunPii 服务器启动成功! 完整启动耗时: ${finalStartupTime.toFixed(2)}ms`);
+        Logger.info(`📡 服务器监听地址: http://${Env.APP_HOST}:${Env.APP_PORT}`);
 
         if (callback && typeof callback === 'function') {
             callback(server);
