@@ -100,7 +100,6 @@ class Befly {
     async loadPlugins() {
         try {
             const loadStartTime = Bun.nanoseconds();
-            Logger.info('开始加载插件...');
 
             const glob = new Bun.Glob('*.js');
             const corePlugins = [];
@@ -108,7 +107,6 @@ class Befly {
             const loadedPluginNames = new Set(); // 用于跟踪已加载的插件名称
 
             // 扫描核心插件目录
-            Logger.info('正在扫描核心插件...');
             const corePluginsScanStart = Bun.nanoseconds();
             for await (const file of glob.scan({
                 cwd: path.join(dirname2(import.meta.url), 'plugins'),
@@ -139,15 +137,11 @@ class Befly {
             }
 
             // 初始化核心插件
-            Logger.info('正在初始化核心插件...');
             const corePluginsInitStart = Bun.nanoseconds();
             for (const plugin of sortedCorePlugins) {
                 try {
-                    const initStart = Bun.nanoseconds();
                     this.pluginLists.push(plugin);
                     this.appContext[plugin.pluginName] = typeof plugin?.onInit === 'function' ? await plugin?.onInit(this.appContext) : {};
-                    const initTime = (Bun.nanoseconds() - initStart) / 1_000_000;
-                    Logger.info(`核心插件 ${plugin.pluginName} 初始化耗时: ${initTime.toFixed(2)}ms`);
                 } catch (error) {
                     Logger.warn(`插件 ${plugin.pluginName} 初始化失败:`, error.message);
                 }
@@ -156,7 +150,6 @@ class Befly {
             Logger.info(`核心插件初始化完成，耗时: ${corePluginsInitTime.toFixed(2)}ms`);
 
             // 扫描用户插件目录
-            Logger.info('正在扫描用户插件...');
             const userPluginsScanStart = Bun.nanoseconds();
             for await (const file of glob.scan({
                 cwd: path.join(process.cwd(), 'plugins'),
@@ -193,15 +186,11 @@ class Befly {
 
             // 初始化用户插件
             if (userPlugins.length > 0) {
-                Logger.info('正在初始化用户插件...');
                 const userPluginsInitStart = Bun.nanoseconds();
                 for (const plugin of sortedUserPlugins) {
                     try {
-                        const initStart = Bun.nanoseconds();
                         this.pluginLists.push(plugin);
                         this.appContext[plugin.pluginName] = typeof plugin?.onInit === 'function' ? await plugin?.onInit(this.appContext) : {};
-                        const initTime = (Bun.nanoseconds() - initStart) / 1_000_000;
-                        Logger.info(`用户插件 ${plugin.pluginName} 初始化耗时: ${initTime.toFixed(2)}ms`);
                     } catch (error) {
                         Logger.warn(`插件 ${plugin.pluginName} 初始化失败:`, error.message);
                     }
@@ -225,7 +214,6 @@ class Befly {
         try {
             const loadStartTime = Bun.nanoseconds();
             const dirDisplayName = dirName === 'core' ? '核心' : '用户';
-            Logger.info(`开始加载${dirDisplayName}接口...`);
 
             const coreApisDir = path.join(dirname2(import.meta.url), 'apis');
             const userApisDir = path.join(process.cwd(), 'apis');
