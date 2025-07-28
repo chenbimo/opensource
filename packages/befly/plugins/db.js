@@ -1,6 +1,5 @@
 import { Env } from '../config/env.js';
 import { Logger } from '../utils/logger.js';
-import { Crud } from '../utils/curd.js';
 
 export default {
     after: ['_redis'],
