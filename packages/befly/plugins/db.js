@@ -35,8 +35,7 @@ export default {
                 // 测试数据库连接
                 const result = await sql`SELECT VERSION() AS version`.execute(db);
                 if (result?.rows?.[0]?.version) {
-                    // 扩展数据库实例
-                    return new Crud(db, befly.redis, sql);
+                    return db;
                 } else {
                     return {};
                 }
