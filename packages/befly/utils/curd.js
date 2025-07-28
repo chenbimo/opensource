@@ -117,7 +117,7 @@ export class Crud {
     }
 
     // 查询列表 - 支持链式调用和分页
-    getList(tableName, fields, page = 1, pageSize = 20) {
+    getList(tableName, fields) {
         let selectQuery;
 
         if (fields) {
@@ -129,10 +129,9 @@ export class Crud {
         // 默认过滤软删除的数据
         selectQuery = selectQuery.where('state', '<>', 2);
 
-        // 添加 exec 方法 - 支持分页，只返回数据列表
+        // 添加 exec 方法 - 返回数据列表
         selectQuery.exec = async function () {
-            const offset = (page - 1) * pageSize;
-            const result = await this.limit(pageSize).offset(offset).execute();
+            const result = await this.execute();
             return { data: result };
         };
 
