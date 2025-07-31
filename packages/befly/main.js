@@ -10,6 +10,19 @@ import { Crypto2 } from './utils/crypto.js';
 import { XMLParser } from './libs/xml/XMLParser.js';
 import { isEmptyObject, isType, pickFields, sortPlugins, RYes, RNo, filename2, dirname2 } from './utils/util.js';
 
+const setCorsOptions = (req) => {
+    return {
+        headers: {
+            'Access-Control-Allow-Origin': Env.ALLOWED_ORIGIN || req.headers.get('origin') || '*',
+            'Access-Control-Allow-Methods': Env.ALLOWED_METHODS || 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': Env.ALLOWED_HEADERS || 'Content-Type, Authorization, authorization, token',
+            'Access-Control-Expose-Headers': Env.EXPOSE_HEADERS || 'Content-Range, X-Content-Range, Authorization, authorization, token',
+            'Access-Control-Max-Age': Env.MAX_AGE || 86400,
+            'Access-Control-Allow-Credentials': Env.ALLOW_CREDENTIALS || 'true'
+        }
+    };
+};
+
 class Befly {
     constructor(options = {}) {
         this.apiRoutes = new Map();
@@ -316,9 +329,13 @@ class Befly {
                 },
                 '/api/*': async (req) => {
                     try {
+                        const corsOptions = setCorsOptions(req);
                         // 直接返回options请求
                         if (req.method === 'OPTIONS') {
-                            return new Response();
+                            return new Response(null, {
+                                status: 204,
+                                headers: corsOptions.headers
+                            });
                         }
                         // 初始化请求数据存储
                         const ctx = {
@@ -416,17 +433,23 @@ class Befly {
 
                         // 登录验证 auth 有3种值 分别为 true、false、['admin', 'user']
                         if (api.auth === true && !ctx.user.id) {
-                            return Response.json(RNo('未登录'));
+                            return Response.json(RNo('未登录'), {
+                                headers: corsOptions.headers
+                            });
                         }
 
                         if (api.auth && api.auth !== true && ctx.user.role !== api.auth) {
-                            return Response.json(RNo('没有权限'));
+                            return Response.json(RNo('没有权限'), {
+                                headers: corsOptions.headers
+                            });
                         }
 
                         // 参数验证
                         const validate = validator.validate(ctx.body, api.fields, api.required);
                         if (validate.code !== 0) {
-                            return Response.json(RNo('无效的请求参数格式', validate.fields));
+                            return Response.json(RNo('无效的请求参数格式', validate.fields), {
+                                headers: corsOptions.headers
+                            });
                         }
 
                         // 执行函数
@@ -434,9 +457,13 @@ class Befly {
 
                         // 返回数据
                         if (result && typeof result === 'object' && 'code' in result) {
-                            return Response.json(result);
+                            return Response.json(result, {
+                                headers: corsOptions.headers
+                            });
                         } else {
-                            return new Response(result);
+                            return new Response(result, {
+                                headers: corsOptions.headers
+                            });
                         }
                     } catch (error) {
                         Logger.error({
@@ -445,10 +472,13 @@ class Befly {
                             stack: error.stack,
                             url: req.url
                         });
-                        return Response.json(RNo('内部服务器错误'));
+                        return Response.json(RNo('内部服务器错误'), {
+                            headers: corsOptions.headers
+                        });
                     }
                 },
                 '/*': async (req) => {
+                    const corsOptions = setCorsOptions(req);
                     const url = new URL(req.url);
                     const filePath = path.join(process.cwd(), 'public', url.pathname);
 
@@ -457,14 +487,19 @@ class Befly {
                         if (await file.exists()) {
                             return new Response(file, {
                                 headers: {
-                                    'Content-Type': file.type || 'application/octet-stream'
+                                    'Content-Type': file.type || 'application/octet-stream',
+                                    ...corsOptions.headers
                                 }
                             });
                         } else {
-                            return Response.json(RNo('文件未找到'));
+                            return Response.json(RNo('文件未找到'), {
+                                headers: corsOptions.headers
+                            });
                         }
                     } catch (error) {
-                        return Response.json(RNo('文件读取失败'));
+                        return Response.json(RNo('文件读取失败'), {
+                            headers: corsOptions.headers
+                        });
                     }
                 },
                 ...(this.appOptions.routes || {})

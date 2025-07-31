@@ -32,6 +32,12 @@ module.exports = {
                 LOG_MAX_SIZE: 52428800, // 50MB,
                 // 时区,
                 TZ: 'Asia/Shanghai',
+                // 跨域配置
+                ALLOWED_METHODS: 'GET, POST, PUT, DELETE, OPTIONS',
+                ALLOWED_HEADERS: 'Content-Type, Authorization, authorization, token',
+                EXPOSE_HEADERS: 'Content-Range, X-Content-Range, Authorization, authorization, token',
+                MAX_AGE: 86400,
+                ALLOW_CREDENTIALS: 'true',
                 // mysql 配置,
                 MYSQL_ENABLE: 0,
                 MYSQL_HOST: '127.0.0.1',

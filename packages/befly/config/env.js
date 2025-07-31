@@ -21,7 +21,7 @@ export const Env = {
     LOG_TO_CONSOLE: Number(process.env.LOG_TO_CONSOLE),
     LOG_MAX_SIZE: Number(process.env.LOG_MAX_SIZE),
     // 时区
-    TIMEZONE: process.env.TIMEZONE,
+    TZ: process.env.TZ,
     // 数据库配置
     MYSQL_ENABLE: Number(process.env.MYSQL_ENABLE),
     MYSQL_HOST: process.env.MYSQL_HOST,
