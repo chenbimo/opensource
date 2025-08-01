@@ -1,6 +1,6 @@
 {
     "name": "befly-template",
-    "version": "1.0.18",
+    "version": "1.0.19",
     "main": "index.js",
     "description": "易接口",
     "private": false,
