@@ -5,7 +5,11 @@ import { Jwt } from '../../utils/jwt.js';
 
 export default Api.POST('令牌检测', false, {}, [], async (befly, ctx) => {
     try {
-        const jwtData = await Jwt.verify(ctx.headers?.authorization?.split(' ')[1] || '');
+        const token = ctx.headers?.authorization?.split(' ')[1] || '';
+        if (!token) {
+            return RNo('令牌不能为空', { state: 'no' });
+        }
+        const jwtData = await Jwt.verify(token);
         return RYes(
             '令牌有效',
             {

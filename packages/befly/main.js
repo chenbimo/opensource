@@ -319,6 +319,7 @@ class Befly {
             hostname: Env.APP_HOST,
             routes: {
                 '/': async (req) => {
+                    const corsOptions = setCorsOptions(req);
                     return Response.json(
                         {
                             code: 0,
@@ -335,6 +336,7 @@ class Befly {
                 '/api/*': async (req) => {
                     try {
                         const corsOptions = setCorsOptions(req);
+
                         // 直接返回options请求
                         if (req.method === 'OPTIONS') {
                             return new Response(null, {
@@ -342,6 +344,7 @@ class Befly {
                                 headers: corsOptions.headers
                             });
                         }
+
                         // 初始化请求数据存储
                         const ctx = {
                             headers: Object.fromEntries(req.headers.entries()),
@@ -489,6 +492,15 @@ class Befly {
                 },
                 '/*': async (req) => {
                     const corsOptions = setCorsOptions(req);
+
+                    // 直接返回options请求
+                    if (req.method === 'OPTIONS') {
+                        return new Response(null, {
+                            status: 204,
+                            headers: corsOptions.headers
+                        });
+                    }
+
                     const url = new URL(req.url);
                     const filePath = path.join(process.cwd(), 'public', url.pathname);
 
