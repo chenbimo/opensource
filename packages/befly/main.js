@@ -319,13 +319,18 @@ class Befly {
             hostname: Env.APP_HOST,
             routes: {
                 '/': async (req) => {
-                    return Response.json({
-                        code: 0,
-                        msg: 'Befly 接口服务已启动',
-                        data: {
-                            mode: Env.NODE_ENV
+                    return Response.json(
+                        {
+                            code: 0,
+                            msg: 'Befly 接口服务已启动',
+                            data: {
+                                mode: Env.NODE_ENV
+                            }
+                        },
+                        {
+                            headers: corsOptions.headers
                         }
-                    });
+                    );
                 },
                 '/api/*': async (req) => {
                     try {
@@ -351,7 +356,10 @@ class Befly {
                         const api = this.apiRoutes.get(apiPath);
 
                         // 接口不存在
-                        if (!api) return Response.json(RNo('接口不存在'));
+                        if (!api)
+                            return Response.json(RNo('接口不存在'), {
+                                headers: corsOptions.headers
+                            });
 
                         const authHeader = req.headers.get('authorization');
                         if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -403,7 +411,9 @@ class Befly {
                                     stack: err.stack
                                 });
 
-                                return Response.json(RNo('无效的请求参数格式'));
+                                return Response.json(RNo('无效的请求参数格式'), {
+                                    headers: corsOptions.headers
+                                });
                             }
                         }
 
