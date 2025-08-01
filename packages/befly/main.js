@@ -525,8 +525,8 @@ class Befly {
         });
 
         const finalStartupTime = (Bun.nanoseconds() - serverStartTime) / 1_000_000;
-        Logger.info(`🚀 Befly 服务器启动成功! 完整启动耗时: ${finalStartupTime.toFixed(2)}ms`);
-        Logger.info(`📡 服务器监听地址: http://${Env.APP_HOST}:${Env.APP_PORT}`);
+        Logger.info(`Befly 服务器启动成功! 完整启动耗时: ${finalStartupTime.toFixed(2)}ms`);
+        Logger.info(`服务器监听地址: http://${Env.APP_HOST}:${Env.APP_PORT}`);
 
         if (callback && typeof callback === 'function') {
             callback(server);
