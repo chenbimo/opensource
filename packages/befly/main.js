@@ -451,7 +451,15 @@ class Befly {
                             });
                         }
 
-                        if (api.auth && api.auth !== true && !api.auth.includes(ctx.user.role)) {
+                        // 如果为字符串，则判断是否等于角色类型
+                        if (isType(api.auth, 'string') && api.auth !== ctx.user?.role_type) {
+                            return Response.json(RNo('没有权限'), {
+                                headers: corsOptions.headers
+                            });
+                        }
+
+                        // 如果为数组，则判断角色是否在数组中
+                        if (isType(api.auth, 'array') && !api.auth.includes(ctx.user?.role)) {
                             return Response.json(RNo('没有权限'), {
                                 headers: corsOptions.headers
                             });
