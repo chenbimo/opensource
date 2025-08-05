@@ -451,7 +451,7 @@ class Befly {
                             });
                         }
 
-                        if (api.auth && api.auth !== true && ctx.user.role !== api.auth) {
+                        if (api.auth && api.auth !== true && !api.auth.includes(ctx.user.role)) {
                             return Response.json(RNo('没有权限'), {
                                 headers: corsOptions.headers
                             });
