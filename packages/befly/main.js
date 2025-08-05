@@ -255,8 +255,8 @@ class Befly {
                     if (isType(api.name, 'string') === false || api.name.trim() === '') {
                         throw new Error(`接口 ${apiPath} 的 name 属性必须是非空字符串`);
                     }
-                    if (api.auth !== false && api.auth !== true && Array.isArray(api.auth) === false) {
-                        throw new Error(`接口 ${apiPath} 的 auth 属性必须是布尔值或字符串数组`);
+                    if (isType(api.auth, 'boolean') === false && isType(api.auth, 'array') === false && isType(api.auth, 'string') === false) {
+                        throw new Error(`接口 ${apiPath} 的 auth 属性必须是布尔值或字符串或字符串数组`);
                     }
                     if (isType(api.fields, 'object') === false) {
                         throw new Error(`接口 ${apiPath} 的 fields 属性必须是对象`);
