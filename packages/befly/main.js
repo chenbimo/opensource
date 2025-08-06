@@ -446,7 +446,7 @@ class Befly {
 
                         // 登录验证 auth 有3种值 分别为 true、false、['admin', 'user']
                         if (api.auth === true && !ctx.user.id) {
-                            return Response.json(RNo('未登录'), {
+                            return Response.json(RNo('未登录', {}, { login: false }), {
                                 headers: corsOptions.headers
                             });
                         }
