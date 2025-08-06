@@ -359,10 +359,11 @@ class Befly {
                         const api = this.apiRoutes.get(apiPath);
 
                         // 接口不存在
-                        if (!api)
+                        if (!api) {
                             return Response.json(RNo('接口不存在'), {
                                 headers: corsOptions.headers
                             });
+                        }
 
                         const authHeader = req.headers.get('authorization');
                         if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -446,7 +447,7 @@ class Befly {
 
                         // 登录验证 auth 有3种值 分别为 true、false、['admin', 'user']
                         if (api.auth === true && !ctx.user.id) {
-                            return Response.json(RNo('未登录', {}, { login: false }), {
+                            return Response.json(RNo('未登录', {}, { login: 'no' }), {
                                 headers: corsOptions.headers
                             });
                         }
