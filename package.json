@@ -19,8 +19,8 @@
         "packages/*"
     ],
     "dependencies": {
-        "@lerna-lite/cli": "^4.6.2",
-        "@lerna-lite/publish": "^4.6.2",
+        "@lerna-lite/cli": "^4.7.0",
+        "@lerna-lite/publish": "^4.7.0",
         "lefthook": "^1.12.2",
         "prettier": "^3.6.2"
     }
