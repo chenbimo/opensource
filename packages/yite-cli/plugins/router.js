@@ -1,79 +1,14 @@
-// 查找模块
-const importGlob = async (pattern, sync = false) => {
-    return `import.meta.glob("${pattern}", {eager: ${sync}})`;
-};
-
-// 生成虚拟模块
-const createVirtualModuleCode = async (options) => {
-    return `
-
-    export const yiteRoutes = () => {
-        let routeFiles = ${await importGlob('@/pages/**/route.js', true)};
-        let pageFiles = ${await importGlob('@/pages/**/index.vue')};
-        let layoutFiles = ${await importGlob('@/layouts/*/index.vue')};
-
-        let getRoutePath = (file) => {
-            return file //
-            .replace('/route.js', '')
-            .replace(/.*\\/pages/, '')
-            .replace(/([a-z])([A-Z])/g,'$1-$2')
-            .replace(/(\\d)/g, '$1-')
-            .replace(/-$/g, '')
-            .toLowerCase()
-            .replace(/[\\s_-]+/g, '-')
-        }
-
-        let routes = [];
-
-        for (let file in routeFiles) {
-            let routePath = getRoutePath(file);
-            let mod = routeFiles[file];
-            let routeData = {
-                meta: mod.default || {}
-            };
-
-            routeData.path = routePath === '/index' ? '/' : routePath;
-            if (routeData.meta.layout !== undefined && routeData.meta.layout === false) {
-                routeData.component = pageFiles[file.replace('/route.js', '/index.vue')];
-            } else {
-                if (routeData.meta.layout !== undefined) {
-                    routeData.component = layoutFiles['/src/layouts/' + routeData.meta.layout + '/index.vue'];
-                } else {
-                    routeData.component = layoutFiles['/src/layouts/default/index.vue'];
-                }
-                routeData.children = [
-                    {
-                        path: '',
-                        component: pageFiles[file.replace('/route.js', '/index.vue')],
-                        meta: routeData?.meta || {}
-                    }
-                ];
-            }
-
-            routes.push(routeData);
-        }
-        return routes;
-    };
-    `;
-};
-
 export const yiteRouter = (options) => {
     let config = {};
-    // 虚拟模块定义
     const virtualModuleId = `virtual:yite-router`;
     const resolvedVirtualModuleId = '\0' + virtualModuleId;
 
     return {
         name: 'yite-router',
         enforce: 'pre',
-        options(options) {
-            // console.log('🚀 ~ file: index.js:7 ~ options ~ options:', options);
-        },
-        buildStart(options) {
-            // console.log('🚀 ~ file: index.js:10 ~ buildStart ~ options:', options);
-        },
+        options(options) {},
+        buildStart(options) {},
         configResolved(resolvedConfig) {
-            // 存储最终解析的配置
             config = resolvedConfig;
         },
         resolveId(id) {
@@ -83,7 +18,53 @@ export const yiteRouter = (options) => {
         },
         load(id) {
             if (id === resolvedVirtualModuleId) {
-                return createVirtualModuleCode();
+                return `
+        const pageFiles = import.meta.glob('@/pages/**/*.vue');
+        const layoutFiles = import.meta.glob('@/layouts/*.vue');
+
+        const layouts = {};
+        const routes = [];
+
+
+
+        const getRouteData = (file) => {
+            const path = file //
+                .replace(/[\\\\\/]+/g, '/')
+                .replace(/.*\\/pages\\//, '')
+                .replace('.vue', '')
+                .replace(/#\\d+/g, '')
+                .replace(/([a-z])([A-Z])/g, '$1-$2')
+                .replace(/-$/g, '')
+                .toLowerCase()
+                .replace(/[\\s_-]+/g, '-');
+            const index = file.indexOf('#');
+            const layout = index !== -1 ? file.substring(index + 1, file.length - 4) : 1;
+
+            return {
+                path: path,
+                layout: Number(layout)
+            };
+        };
+
+        for (let file in pageFiles) {
+            if (file.indexOf('components') !== -1) continue;
+
+            const routeData = getRouteData(file);
+            routes.push({
+                path: routeData.path === 'index' ? '/' : '/' + routeData.path,
+                component: layoutFiles['/src/layouts/' + routeData.layout + '.vue'],
+                children: [
+                    {
+                        path: '',
+                        component: pageFiles[file]
+                    }
+                ]
+            });
+        }
+
+
+        export { routes };
+    `;
             }
         }
     };
