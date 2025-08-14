@@ -24,7 +24,7 @@ export default {
                     const data2 = await Promise.all(
                         data.map(async (item) => ({
                             ...filterData(item),
-                            id: await redis.genTimeID(),
+                            id: await befly.redis.genTimeID(),
                             created_at: now,
                             updated_at: now
                         }))
@@ -33,7 +33,7 @@ export default {
                 } else {
                     const data2 = {
                         ...filterData(data),
-                        id: await redis.genTimeID(),
+                        id: await befly.redis.genTimeID(),
                         created_at: now,
                         updated_at: now
                     };
