@@ -33,6 +33,7 @@ export const Env = {
     MYSQL_POOL_TIMEOUT: Number(process.env.MYSQL_POOL_TIMEOUT),
     MYSQL_POOL_MAX: Number(process.env.MYSQL_POOL_MAX),
     // Redis配置
+    REDIS_URL: process.env.REDIS_URL,
     REDIS_ENABLE: Number(process.env.REDIS_ENABLE),
     REDIS_HOST: process.env.REDIS_HOST,
     REDIS_PORT: Number(process.env.REDIS_PORT),

@@ -1,3 +1,4 @@
+import { redis } from 'bun';
 import { Env } from '../config/env.js';
 import { Logger } from '../utils/logger.js';
 
@@ -6,24 +7,6 @@ export default {
     async onInit(befly) {
         try {
             if (Env.REDIS_ENABLE === 1) {
-                const config = {
-                    username: Env.REDIS_USERNAME || '',
-                    password: Env.REDIS_PASSWORD || '',
-                    database: Env.REDIS_DB || 0,
-                    socket: {
-                        host: Env.REDIS_HOST || '127.0.0.1',
-                        port: Env.REDIS_PORT || 6379,
-                        reconnectStrategy: (retries) => {
-                            // 指数退避重连策略，最大延迟 2 秒
-                            const jitter = Math.floor(Math.random() * 200);
-                            const delay = Math.min(Math.pow(2, retries) * 50, 2000);
-                            return delay + jitter;
-                        }
-                    }
-                };
-                const createClient = await import('@redis/client').then((m) => m.createClient);
-                const redis = createClient(config);
-
                 // 测试连接
                 try {
                     await redis.connect();

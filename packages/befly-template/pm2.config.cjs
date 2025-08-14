@@ -49,6 +49,7 @@ module.exports = {
                 MYSQL_POOL_MAX: '10',
                 MYSQL_DEBUG: 0,
                 // redis 配置,
+                REDIS_URL: 'redis://root:root@127.0.0.1:6379',
                 REDIS_ENABLE: 0,
                 REDIS_HOST: '127.0.0.1',
                 REDIS_PORT: 6379,
