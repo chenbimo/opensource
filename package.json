@@ -18,10 +18,17 @@
     "workspaces": [
         "packages/*"
     ],
+    "simple-git-hooks": {
+        "pre-commit": "bunx --bun lint-staged"
+    },
+    "lint-staged": {
+        "*.{js,css,scss,less,ts,jsx,vue,html,json,md,yaml}": "bunx --bun prettier --write --cache --ignore-unknown"
+    },
     "dependencies": {
-        "@lerna-lite/cli": "^4.7.0",
-        "@lerna-lite/publish": "^4.7.0",
-        "lefthook": "^1.12.2",
-        "prettier": "^3.6.2"
+        "@lerna-lite/cli": "^4.7.1",
+        "@lerna-lite/publish": "^4.7.1",
+        "lint-staged": "^16.1.5",
+        "prettier": "^3.6.2",
+        "simple-git-hooks": "^2.13.1"
     }
 }
