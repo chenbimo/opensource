@@ -7,18 +7,8 @@ export default {
     async onInit(befly) {
         try {
             if (Env.REDIS_ENABLE === 1) {
-                // 测试连接
-                try {
-                    await redis.connect();
-                    // 测试连接
-                    const result = await redis.ping();
-                } catch (error) {
-                    Logger.error({
-                        msg: 'Redis 连接失败',
-                        message: error.message,
-                        stack: error.stack
-                    });
-                    process.exit();
+                if ((await redis.ping()) !== 'PONG') {
+                    throw new Error('Redis 连接失败');
                 }
 
                 // 添加对象存储辅助方法
