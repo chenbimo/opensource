@@ -15,11 +15,11 @@ export default {
                 // 创建 MariaDB 连接池配置
                 const config = {
                     host: Env.MYSQL_HOST || '127.0.0.1',
-                    port: parseInt(Env.MYSQL_PORT) || 3306,
+                    port: Env.MYSQL_PORT || 3306,
                     database: Env.MYSQL_DB || 'test',
                     user: Env.MYSQL_USER || 'root',
                     password: Env.MYSQL_PASSWORD || 'root',
-                    connectionLimit: parseInt(Env.MYSQL_POOL_MAX) || 10,
+                    connectionLimit: Env.MYSQL_POOL_MAX || 10,
                     charset: 'utf8mb4',
                     timezone: Env.TIMEZONE || 'local',
                     debug: Env.MYSQL_DEBUG === 1,
