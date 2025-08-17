@@ -67,7 +67,7 @@ export default {
                     // 执行原始 SQL - 核心方法
                     async execute(sql, params = []) {
                         if (!sql || typeof sql !== 'string') {
-                            throw new Error('SQL statement is required');
+                            throw new Error('SQL 语句是必需的');
                         }
 
                         let conn;
@@ -97,7 +97,7 @@ export default {
                     // 事务处理
                     async transaction(callback) {
                         if (typeof callback !== 'function') {
-                            throw new Error('Transaction callback must be a function');
+                            throw new Error('事务回调函数是必需的');
                         }
 
                         let conn;
@@ -143,7 +143,7 @@ export default {
                     // 获取单条记录详情
                     async getDetail(table, options = {}) {
                         if (!table || typeof table !== 'string') {
-                            throw new Error('Table name is required');
+                            throw new Error('表名是必需的');
                         }
 
                         const { where = {}, fields = '*', leftJoins = [] } = typeof options === 'object' && !Array.isArray(options) ? options : { where: options };
@@ -175,7 +175,7 @@ export default {
                     // 获取列表（支持分页）
                     async getList(table, options = {}) {
                         if (!table || typeof table !== 'string') {
-                            throw new Error('Table name is required');
+                            throw new Error('表名是必需的');
                         }
 
                         const { where = {}, fields = '*', leftJoins = [], orderBy = [], groupBy = [], having = [], page = 1, pageSize = 10 } = options;
@@ -257,7 +257,7 @@ export default {
                     // 获取所有记录
                     async getAll(table, options = {}) {
                         if (!table || typeof table !== 'string') {
-                            throw new Error('Table name is required');
+                            throw new Error('表名是必需的');
                         }
 
                         const { where = {}, fields = '*', leftJoins = [], orderBy = [] } = typeof options === 'object' && !Array.isArray(options) ? options : { where: options };
@@ -293,11 +293,11 @@ export default {
                     // 插入数据
                     async insData(table, data) {
                         if (!table || typeof table !== 'string') {
-                            throw new Error('Table name is required');
+                            throw new Error('表名是必需的');
                         }
 
                         if (!data) {
-                            throw new Error('Insert data is required');
+                            throw new Error('插入数据是必需的');
                         }
 
                         try {
@@ -313,15 +313,15 @@ export default {
                     // 更新数据
                     async upData(table, data, where) {
                         if (!table || typeof table !== 'string') {
-                            throw new Error('Table name is required');
+                            throw new Error('表名是必需的');
                         }
 
                         if (!data || typeof data !== 'object') {
-                            throw new Error('Update data is required');
+                            throw new Error('更新数据是必需的');
                         }
 
                         if (!where) {
-                            throw new Error('WHERE condition is required for UPDATE');
+                            throw new Error('更新操作需要 WHERE 条件');
                         }
 
                         try {
@@ -337,11 +337,11 @@ export default {
                     // 删除数据
                     async delData(table, where) {
                         if (!table || typeof table !== 'string') {
-                            throw new Error('Table name is required');
+                            throw new Error('表名是必需的');
                         }
 
                         if (!where) {
-                            throw new Error('WHERE condition is required for DELETE');
+                            throw new Error('删除操作需要 WHERE 条件');
                         }
 
                         try {
@@ -357,7 +357,7 @@ export default {
                     // 批量插入
                     async insBatch(table, dataArray) {
                         if (!table || typeof table !== 'string') {
-                            throw new Error('Table name is required');
+                            throw new Error('表名是必需的');
                         }
 
                         if (!Array.isArray(dataArray) || dataArray.length === 0) {
@@ -377,7 +377,7 @@ export default {
                     // 获取记录总数
                     async getCount(table, options = {}) {
                         if (!table || typeof table !== 'string') {
-                            throw new Error('Table name is required');
+                            throw new Error('表名是必需的');
                         }
 
                         const { where = {}, leftJoins = [] } = typeof options === 'object' && !Array.isArray(options) ? options : { where: options };
