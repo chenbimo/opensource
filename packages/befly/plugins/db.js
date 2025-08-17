@@ -59,7 +59,7 @@ export default {
                 // 数据库操作方法
                 const dbMethods = {
                     // 原始连接池访问
-                    pool,
+                    pool: pool,
 
                     // 创建查询构造器
                     query: () => createQueryBuilder(),
