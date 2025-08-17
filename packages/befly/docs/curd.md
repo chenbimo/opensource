@@ -116,6 +116,30 @@ const users = await db.getAll('users', {
 });
 ```
 
+#### getCount - 获取记录总数
+
+```javascript
+// 基础计数
+const count = await db.getCount('users', {
+    where: { status: 1 }
+});
+
+// 支持 leftJoin 的计数
+const count = await db.getCount('users u', {
+    where: { 'u.status': 1, 'p.status': 1 },
+    leftJoins: ['posts p ON u.id = p.user_id']
+});
+
+// 使用高级 where 条件
+const count = await db.getCount('users', {
+    where: {
+        status: 1,
+        created_at: { $gte: '2024-01-01' },
+        role: { $in: ['admin', 'user'] }
+    }
+});
+```
+
 ### 3. 增删改操作
 
 #### insData - 插入数据

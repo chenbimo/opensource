@@ -374,6 +374,38 @@ export default {
                         }
                     },
 
+                    // 获取记录总数
+                    async getCount(table, options = {}) {
+                        if (!table || typeof table !== 'string') {
+                            throw new Error('Table name is required');
+                        }
+
+                        const { where = {}, leftJoins = [] } = typeof options === 'object' && !Array.isArray(options) ? options : { where: options };
+
+                        try {
+                            const builder = createQueryBuilder().from(table).where(where);
+
+                            // 添加 LEFT JOIN
+                            leftJoins.forEach((join) => {
+                                if (typeof join === 'string') {
+                                    const parts = join.split(' ON ');
+                                    if (parts.length === 2) {
+                                        builder.leftJoin(parts[0].trim(), parts[1].trim());
+                                    }
+                                } else if (join && typeof join === 'object' && join.table && join.on) {
+                                    builder.leftJoin(join.table, join.on);
+                                }
+                            });
+
+                            const { sql, params } = builder.toCountSql();
+                            const result = await this.execute(sql, params);
+                            return result[0]?.total || 0;
+                        } catch (error) {
+                            Logger.error('getCount 执行失败:', error);
+                            throw error;
+                        }
+                    },
+
                     // 获取连接池状态
                     getPoolStatus() {
                         return {
