@@ -13,7 +13,9 @@
         ".": "./main.js"
     },
     "scripts": {
-        "r": "bun publish --registry=https://registry.npmjs.org --access=public"
+        "r": "bun publish --registry=https://registry.npmjs.org --access=public",
+        "test": "bun test",
+        "test:jwt": "bun test tests/jwt.test.js"
     },
     "keywords": [
         "bun",
