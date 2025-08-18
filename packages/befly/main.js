@@ -7,7 +7,7 @@ import { Logger } from './utils/logger.js';
 import { Jwt } from './utils/jwt.js';
 import { validator } from './utils/validate.js';
 import { Crypto2 } from './utils/crypto.js';
-import { XMLParser } from './libs/xml/XMLParser.js';
+import { Xml } from './libs/xml.js';
 import { isEmptyObject, isType, pickFields, sortPlugins, RYes, RNo, filename2, dirname2 } from './utils/util.js';
 
 const setCorsOptions = (req) => {
@@ -394,7 +394,7 @@ class Befly {
                                     ctx.body = await req.json();
                                 } else if (contentType.indexOf('xml') !== -1) {
                                     const textData = await req.text();
-                                    const xmlData = new XMLParser().parse(textData);
+                                    const xmlData = Xml.parse(textData);
                                     ctx.body = xmlData?.xml ? xmlData.xml : xmlData;
                                 } else if (contentType.indexOf('form-data') !== -1) {
                                     ctx.body = await req.formData();
