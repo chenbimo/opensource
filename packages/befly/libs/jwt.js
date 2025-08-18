@@ -4,7 +4,7 @@ import { createHmac } from 'crypto';
  * JWT基础工具类
  * 提供JWT相关的基础工具方法
  */
-export class JwtBase {
+export class Jwt {
     // 支持的算法映射
     static ALGORITHMS = {
         HS256: 'sha256',

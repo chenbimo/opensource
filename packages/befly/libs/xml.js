@@ -354,4 +354,4 @@ class Xml {
     }
 }
 
-export default Xml;
+export { Xml };

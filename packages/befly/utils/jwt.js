@@ -1,4 +1,4 @@
-import { JwtBase } from '../libs/jwt.js';
+import { Jwt as JwtBase } from '../libs/jwt.js';
 import { Env } from '../config/env.js';
 
 /**
