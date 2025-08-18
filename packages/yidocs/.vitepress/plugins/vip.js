@@ -1,4 +1,4 @@
-export default function contentReplacePlugin(md, text) {
+export function docsVip(md, text) {
     // 定义正则表达式来匹配目标内容
     const vipStart = /\<\!\-\-vipStart\-\-(?<vipText>.+)\-\-\>/;
     const vipEnd = '<!--vipEnd-->';

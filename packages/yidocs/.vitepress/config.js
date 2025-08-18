@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitepress';
-import { docsAuto } from '@yidocs/auto';
+import { docsAuto } from './plugins/auto.js';
 
 const { sideBar, navBar } = docsAuto();
 
