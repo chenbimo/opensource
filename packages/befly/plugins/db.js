@@ -56,36 +56,49 @@ export default {
                     }
                 }
 
-                // 数据库操作方法
-                const dbMethods = {
+                // 数据库管理类
+                class DatabaseManager {
+                    // 私有属性
+                    #pool;
+
+                    constructor(pool) {
+                        this.#pool = pool;
+                    }
+
                     // 原始连接池访问
-                    pool: pool,
+                    get pool() {
+                        return this.#pool;
+                    }
 
                     // 创建查询构造器
-                    query: () => createQueryBuilder(),
+                    query() {
+                        return createQueryBuilder();
+                    }
 
-                    // 通用数据处理函数 - 自动添加ID和时间戳
-                    async _processDataForInsert(data) {
+                    // 私有方法：通用数据处理函数 - 自动添加ID和时间戳
+                    async #processDataForInsert(data) {
                         const now = Date.now();
 
                         if (Array.isArray(data)) {
                             return await Promise.all(
                                 data.map(async (item) => ({
                                     ...item,
-                                    id: item.id || (befly._redis ? await befly._redis.genTimeID() : now + '_' + Math.random().toString(36).substr(2, 9)),
-                                    created_at: item.created_at || now,
-                                    updated_at: item.updated_at || now
+                                    id: await befly.redis.genTimeID(),
+                                    created_at: now,
+                                    updated_at: now
                                 }))
                             );
                         } else {
                             return {
                                 ...data,
-                                id: data.id || (befly._redis ? await befly._redis.genTimeID() : now + '_' + Math.random().toString(36).substr(2, 9)),
-                                created_at: data.created_at || now,
-                                updated_at: data.updated_at || now
+                                id: await befly.redis.genTimeID(),
+                                created_at: now,
+                                updated_at: now
                             };
                         }
-                    }, // 执行原始 SQL - 核心方法
+                    }
+
+                    // 执行原始 SQL - 核心方法
                     async execute(sql, params = []) {
                         if (!sql || typeof sql !== 'string') {
                             throw new Error('SQL 语句是必需的');
@@ -93,7 +106,7 @@ export default {
 
                         let conn;
                         try {
-                            conn = await pool.getConnection();
+                            conn = await this.#pool.getConnection();
 
                             if (Env.MYSQL_DEBUG === 1) {
                                 Logger.debug('执行SQL:', { sql, params });
@@ -113,7 +126,7 @@ export default {
                                 }
                             }
                         }
-                    },
+                    }
 
                     // 事务处理
                     async transaction(callback) {
@@ -123,7 +136,7 @@ export default {
 
                         let conn;
                         try {
-                            conn = await pool.getConnection();
+                            conn = await this.#pool.getConnection();
                             await conn.beginTransaction();
 
                             // 为回调函数提供连接对象
@@ -159,7 +172,7 @@ export default {
                                 }
                             }
                         }
-                    },
+                    }
 
                     // 获取单条记录详情
                     async getDetail(table, options = {}) {
@@ -196,7 +209,7 @@ export default {
                             Logger.error('getDetail 执行失败:', error);
                             throw error;
                         }
-                    },
+                    }
 
                     // 获取列表（支持分页）
                     async getList(table, options = {}) {
@@ -278,7 +291,7 @@ export default {
                             Logger.error('getList 执行失败:', error);
                             throw error;
                         }
-                    },
+                    }
 
                     // 获取所有记录
                     async getAll(table, options = {}) {
@@ -314,7 +327,7 @@ export default {
                             Logger.error('getAll 执行失败:', error);
                             throw error;
                         }
-                    },
+                    }
 
                     // 插入数据 - 增强版，自动添加 ID 和时间戳
                     async insData(table, data) {
@@ -327,7 +340,7 @@ export default {
                         }
 
                         try {
-                            const processedData = await this._processDataForInsert(data);
+                            const processedData = await this.#processDataForInsert(data);
                             const builder = createQueryBuilder();
                             const { sql, params } = builder.toInsertSql(table, processedData);
                             return await this.execute(sql, params);
@@ -335,7 +348,9 @@ export default {
                             Logger.error('insData 执行失败:', error);
                             throw error;
                         }
-                    }, // 更新数据 - 增强版，自动添加 updated_at，过滤敏感字段
+                    }
+
+                    // 更新数据 - 增强版，自动添加 updated_at，过滤敏感字段
                     async upData(table, data, where) {
                         if (!table || typeof table !== 'string') {
                             throw new Error('表名是必需的');
@@ -366,7 +381,7 @@ export default {
                             Logger.error('upData 执行失败:', error);
                             throw error;
                         }
-                    },
+                    }
 
                     // 删除数据
                     async delData(table, where) {
@@ -386,7 +401,7 @@ export default {
                             Logger.error('delData 执行失败:', error);
                             throw error;
                         }
-                    },
+                    }
 
                     // 批量插入 - 增强版，自动添加 ID 和时间戳
                     async insBatch(table, dataArray) {
@@ -399,7 +414,7 @@ export default {
                         }
 
                         try {
-                            const processedDataArray = await this._processDataForInsert(dataArray);
+                            const processedDataArray = await this.#processDataForInsert(dataArray);
                             const builder = createQueryBuilder();
                             const { sql, params } = builder.toInsertSql(table, processedDataArray);
                             return await this.execute(sql, params);
@@ -407,7 +422,7 @@ export default {
                             Logger.error('insBatch 执行失败:', error);
                             throw error;
                         }
-                    },
+                    }
 
                     // 获取记录总数
                     async getCount(table, options = {}) {
@@ -439,23 +454,23 @@ export default {
                             Logger.error('getCount 执行失败:', error);
                             throw error;
                         }
-                    },
+                    }
 
                     // 获取连接池状态
                     getPoolStatus() {
                         return {
-                            activeConnections: pool.activeConnections(),
-                            totalConnections: pool.totalConnections(),
-                            idleConnections: pool.idleConnections(),
-                            taskQueueSize: pool.taskQueueSize()
+                            activeConnections: this.#pool.activeConnections(),
+                            totalConnections: this.#pool.totalConnections(),
+                            idleConnections: this.#pool.idleConnections(),
+                            taskQueueSize: this.#pool.taskQueueSize()
                         };
-                    },
+                    }
 
                     // 关闭连接池
                     async close() {
-                        if (pool) {
+                        if (this.#pool) {
                             try {
-                                await pool.end();
+                                await this.#pool.end();
                                 Logger.info('数据库连接池已关闭');
                             } catch (error) {
                                 Logger.error('关闭数据库连接池失败:', error);
@@ -463,13 +478,16 @@ export default {
                             }
                         }
                     }
-                };
+                }
+
+                // 创建数据库管理器实例
+                const dbManager = new DatabaseManager(pool);
 
                 // 监听进程退出事件，确保连接池正确关闭
                 const gracefulShutdown = async (signal) => {
                     Logger.info(`收到 ${signal} 信号，正在关闭数据库连接池...`);
                     try {
-                        await dbMethods.close();
+                        await dbManager.close();
                     } catch (error) {
                         Logger.error('优雅关闭数据库失败:', error);
                     }
@@ -480,7 +498,7 @@ export default {
                 process.on('SIGTERM', gracefulShutdown);
                 process.on('SIGUSR2', gracefulShutdown); // nodemon 重启
 
-                return dbMethods;
+                return dbManager;
             } else {
                 Logger.warn(`MySQL 未启用，跳过初始化`);
                 return {};
