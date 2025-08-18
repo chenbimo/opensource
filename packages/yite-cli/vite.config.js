@@ -12,7 +12,7 @@ import Inspect from 'vite-plugin-inspect';
 import portfinder from 'portfinder';
 
 import { mergeAndConcat } from 'merge-anything';
-import Unocss from 'unocss/vite';
+// import Unocss from 'unocss/vite';
 import Icons from 'unplugin-icons/vite';
 import IconsResolver from 'unplugin-icons/resolver';
 import ReactivityTransform from '@vue-macros/reactivity-transform/vite';
@@ -22,7 +22,7 @@ import VueDevTools from 'vite-plugin-vue-devtools';
 // 内部文件
 import { yiteRouter } from './plugins/router.js';
 import { yiteI18n } from './plugins/i18n.js';
-import unocssConfig from './unocss.config.js';
+// import unocssConfig from './unocss.config.js';
 import { fnFileProtocolPath, fnOmit, fnImport, log4state, getYiteNodeModules } from './utils/index.js';
 import { fnAppDir } from './system.js';
 
@@ -174,7 +174,7 @@ export default defineViteConfig(async ({ command, mode }) => {
 
     allPlugins.push(Components(componentsConfig));
     allPlugins.push(AutoImport(autoImportConfig));
-    allPlugins.push(Unocss(unocssConfig));
+    // allPlugins.push(Unocss(unocssConfig));
     allPlugins.push(
         visualizer({
             filename: '.cache/stats.html',
