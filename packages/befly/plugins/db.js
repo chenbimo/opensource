@@ -64,7 +64,28 @@ export default {
                     // 创建查询构造器
                     query: () => createQueryBuilder(),
 
-                    // 执行原始 SQL - 核心方法
+                    // 通用数据处理函数 - 自动添加ID和时间戳
+                    async _processDataForInsert(data) {
+                        const now = Date.now();
+
+                        if (Array.isArray(data)) {
+                            return await Promise.all(
+                                data.map(async (item) => ({
+                                    ...item,
+                                    id: item.id || (befly._redis ? await befly._redis.genTimeID() : now + '_' + Math.random().toString(36).substr(2, 9)),
+                                    created_at: item.created_at || now,
+                                    updated_at: item.updated_at || now
+                                }))
+                            );
+                        } else {
+                            return {
+                                ...data,
+                                id: data.id || (befly._redis ? await befly._redis.genTimeID() : now + '_' + Math.random().toString(36).substr(2, 9)),
+                                created_at: data.created_at || now,
+                                updated_at: data.updated_at || now
+                            };
+                        }
+                    }, // 执行原始 SQL - 核心方法
                     async execute(sql, params = []) {
                         if (!sql || typeof sql !== 'string') {
                             throw new Error('SQL 语句是必需的');
@@ -146,7 +167,12 @@ export default {
                             throw new Error('表名是必需的');
                         }
 
-                        const { where = {}, fields = '*', leftJoins = [] } = typeof options === 'object' && !Array.isArray(options) ? options : { where: options };
+                        const {
+                            //
+                            where = {},
+                            fields = '*',
+                            leftJoins = []
+                        } = typeof options === 'object' && !Array.isArray(options) ? options : { where: options };
 
                         try {
                             const builder = createQueryBuilder().select(fields).from(table).where(where).limit(1);
@@ -290,7 +316,7 @@ export default {
                         }
                     },
 
-                    // 插入数据
+                    // 插入数据 - 增强版，自动添加 ID 和时间戳
                     async insData(table, data) {
                         if (!table || typeof table !== 'string') {
                             throw new Error('表名是必需的');
@@ -301,16 +327,15 @@ export default {
                         }
 
                         try {
+                            const processedData = await this._processDataForInsert(data);
                             const builder = createQueryBuilder();
-                            const { sql, params } = builder.toInsertSql(table, data);
+                            const { sql, params } = builder.toInsertSql(table, processedData);
                             return await this.execute(sql, params);
                         } catch (error) {
                             Logger.error('insData 执行失败:', error);
                             throw error;
                         }
-                    },
-
-                    // 更新数据
+                    }, // 更新数据 - 增强版，自动添加 updated_at，过滤敏感字段
                     async upData(table, data, where) {
                         if (!table || typeof table !== 'string') {
                             throw new Error('表名是必需的');
@@ -325,8 +350,17 @@ export default {
                         }
 
                         try {
+                            // 剔除 undefined 值和敏感字段
+                            const filteredData = Object.fromEntries(Object.entries(data).filter(([key, value]) => value !== undefined && !['id', 'created_at', 'deleted_at'].includes(key)));
+
+                            // 自动添加 updated_at
+                            const updateData = {
+                                ...filteredData,
+                                updated_at: Date.now()
+                            };
+
                             const builder = createQueryBuilder().where(where);
-                            const { sql, params } = builder.toUpdateSql(table, data);
+                            const { sql, params } = builder.toUpdateSql(table, updateData);
                             return await this.execute(sql, params);
                         } catch (error) {
                             Logger.error('upData 执行失败:', error);
@@ -354,7 +388,7 @@ export default {
                         }
                     },
 
-                    // 批量插入
+                    // 批量插入 - 增强版，自动添加 ID 和时间戳
                     async insBatch(table, dataArray) {
                         if (!table || typeof table !== 'string') {
                             throw new Error('表名是必需的');
@@ -365,8 +399,9 @@ export default {
                         }
 
                         try {
+                            const processedDataArray = await this._processDataForInsert(dataArray);
                             const builder = createQueryBuilder();
-                            const { sql, params } = builder.toInsertSql(table, dataArray);
+                            const { sql, params } = builder.toInsertSql(table, processedDataArray);
                             return await this.execute(sql, params);
                         } catch (error) {
                             Logger.error('insBatch 执行失败:', error);
