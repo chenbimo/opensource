@@ -1,4 +1,4 @@
-import { createServer } from 'rolldown-vite';
+import { createServer } from 'vite';
 
 import path from 'path';
 import { fnCliDir } from '../system.js';
