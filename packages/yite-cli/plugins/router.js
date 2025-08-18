@@ -31,13 +31,13 @@ export const yiteRouter = (options) => {
             const path = file //
                 .replace(/[\\\\\/]+/g, '/')
                 .replace(/.*\\/pages\\//, '')
-                .replace('.vue', '')
+                .replace(/(\\!\\d)?\\.vue/, '')
                 .replace(/#\\d+/g, '')
                 .replace(/([a-z])([A-Z])/g, '$1-$2')
                 .replace(/-$/g, '')
                 .toLowerCase()
                 .replace(/[\\s_-]+/g, '-');
-            const index = file.indexOf('#');
+            const index = file.indexOf('!');
             const layout = index !== -1 ? file.substring(index + 1, file.length - 4) : 1;
 
             return {
