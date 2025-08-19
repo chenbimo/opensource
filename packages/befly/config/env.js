@@ -17,6 +17,7 @@ export const Env = {
     PARAMS_CHECK: process.env.PARAMS_CHECK,
     // 日志等级
     LOG_LEVEL: process.env.LOG_LEVEL,
+    LOG_EXCLUDE_FIELDS: process.env.LOG_EXCLUDE_FIELDS,
     LOG_DIR: process.env.LOG_DIR,
     LOG_TO_CONSOLE: Number(process.env.LOG_TO_CONSOLE),
     LOG_MAX_SIZE: Number(process.env.LOG_MAX_SIZE),
