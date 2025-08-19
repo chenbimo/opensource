@@ -192,43 +192,31 @@ export class SqlBuilder {
         return this;
     }
 
-    orderBy(field, direction = 'ASC') {
-        if (Array.isArray(field)) {
-            field.forEach((item) => {
-                if (typeof item === 'string' && item.includes('#')) {
-                    const [fieldName, dir] = item.split('#');
-                    const cleanDir = (dir || 'ASC').trim().toUpperCase();
-                    if (!['ASC', 'DESC'].includes(cleanDir)) {
-                        throw new Error('ORDER BY direction must be ASC or DESC');
-                    }
-                    this._orderBy.push(`${fieldName.trim()} ${cleanDir}`);
-                } else if (Array.isArray(item) && item.length >= 1) {
-                    const [fieldName, dir] = item;
-                    const cleanDir = (dir || 'ASC').toUpperCase();
-                    if (!['ASC', 'DESC'].includes(cleanDir)) {
-                        throw new Error('ORDER BY direction must be ASC or DESC');
-                    }
-                    this._orderBy.push(`${fieldName} ${cleanDir}`);
-                } else if (typeof item === 'string') {
-                    this._orderBy.push(`${item} ASC`);
-                }
-            });
-        } else if (typeof field === 'string') {
-            if (field.includes('#')) {
-                const [fieldName, dir] = field.split('#');
-                const cleanDir = (dir || 'ASC').trim().toUpperCase();
-                if (!['ASC', 'DESC'].includes(cleanDir)) {
-                    throw new Error('ORDER BY direction must be ASC or DESC');
-                }
-                this._orderBy.push(`${fieldName.trim()} ${cleanDir}`);
-            } else {
-                const cleanDir = direction.toUpperCase();
-                if (!['ASC', 'DESC'].includes(cleanDir)) {
-                    throw new Error('ORDER BY direction must be ASC or DESC');
-                }
-                this._orderBy.push(`${field} ${cleanDir}`);
-            }
+    orderBy(fields) {
+        if (!Array.isArray(fields)) {
+            throw new Error('orderBy must be an array of strings in "field#direction" format');
         }
+
+        fields.forEach((item) => {
+            if (typeof item !== 'string' || !item.includes('#')) {
+                throw new Error('orderBy field must be a string in "field#direction" format (e.g., "name#ASC", "id#DESC")');
+            }
+
+            const [fieldName, direction] = item.split('#');
+            const cleanField = fieldName.trim();
+            const cleanDir = direction.trim().toUpperCase();
+
+            if (!cleanField) {
+                throw new Error('Field name cannot be empty in orderBy');
+            }
+
+            if (!['ASC', 'DESC'].includes(cleanDir)) {
+                throw new Error('ORDER BY direction must be ASC or DESC');
+            }
+
+            this._orderBy.push(`${cleanField} ${cleanDir}`);
+        });
+
         return this;
     }
 

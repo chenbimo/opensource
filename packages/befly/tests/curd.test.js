@@ -268,38 +268,49 @@ describe('ORDER BY 测试', () => {
         builder = createQueryBuilder().select('*').from('users');
     });
 
-    test('单个排序字段', () => {
-        const { sql, params } = builder.orderBy('name', 'ASC').toSelectSql();
+    test('一维数组格式排序', () => {
+        const { sql, params } = builder.orderBy(['created_at#DESC', 'name#ASC', 'id#DESC']).toSelectSql();
+
+        expect(sql).toBe('SELECT * FROM users ORDER BY created_at DESC, name ASC, id DESC');
+        expect(params).toEqual([]);
+    });
+
+    test('单个字段排序', () => {
+        const { sql, params } = builder.orderBy(['name#ASC']).toSelectSql();
 
         expect(sql).toBe('SELECT * FROM users ORDER BY name ASC');
         expect(params).toEqual([]);
     });
 
-    test('字段#方向格式', () => {
-        const { sql, params } = builder.orderBy('created_at#DESC').toSelectSql();
-
-        expect(sql).toBe('SELECT * FROM users ORDER BY created_at DESC');
-        expect(params).toEqual([]);
-    });
-
-    test('数组格式排序', () => {
-        const { sql, params } = builder.orderBy(['created_at#DESC', 'name#ASC', 'id']).toSelectSql();
-
-        expect(sql).toBe('SELECT * FROM users ORDER BY created_at DESC, name ASC, id ASC');
-        expect(params).toEqual([]);
-    });
-
-    test('混合格式排序', () => {
-        const { sql, params } = builder.orderBy(['created_at#DESC', ['name', 'ASC'], 'id']).toSelectSql();
-
-        expect(sql).toBe('SELECT * FROM users ORDER BY created_at DESC, name ASC, id ASC');
-        expect(params).toEqual([]);
-    });
-
-    test('无效排序方向', () => {
+    test('无效格式验证 - 非数组', () => {
         expect(() => {
-            builder.orderBy('name', 'INVALID').toSelectSql();
+            builder.orderBy('name#ASC').toSelectSql();
+        }).toThrow('orderBy must be an array of strings in "field#direction" format');
+    });
+
+    test('无效格式验证 - 缺少排序方向', () => {
+        expect(() => {
+            builder.orderBy(['name']).toSelectSql();
+        }).toThrow('orderBy field must be a string in "field#direction" format');
+    });
+
+    test('无效格式验证 - 无效排序方向', () => {
+        expect(() => {
+            builder.orderBy(['name#INVALID']).toSelectSql();
         }).toThrow('ORDER BY direction must be ASC or DESC');
+    });
+
+    test('无效格式验证 - 空字段名', () => {
+        expect(() => {
+            builder.orderBy(['#ASC']).toSelectSql();
+        }).toThrow('Field name cannot be empty in orderBy');
+    });
+
+    test('大小写不敏感', () => {
+        const { sql, params } = builder.orderBy(['name#asc', 'id#desc']).toSelectSql();
+
+        expect(sql).toBe('SELECT * FROM users ORDER BY name ASC, id DESC');
+        expect(params).toEqual([]);
     });
 });
 
@@ -579,7 +590,7 @@ describe('参数验证测试', () => {
 
 describe('重置功能测试', () => {
     test('reset 方法', () => {
-        const builder = createQueryBuilder().select(['id', 'name']).from('users').where({ status: 1 }).orderBy('name').limit(10);
+        const builder = createQueryBuilder().select(['id', 'name']).from('users').where({ status: 1 }).orderBy(['name#ASC']).limit(10);
 
         // 重置前有内容
         expect(builder._select.length).toBeGreaterThan(0);
@@ -661,7 +672,7 @@ describe('链式调用测试', () => {
         expect(builder.from('users')).toBe(builder);
         expect(builder.where({ status: 1 })).toBe(builder);
         expect(builder.leftJoin('profiles', 'users.id = profiles.user_id')).toBe(builder);
-        expect(builder.orderBy('name')).toBe(builder);
+        expect(builder.orderBy(['name#ASC'])).toBe(builder);
         expect(builder.groupBy('role')).toBe(builder);
         expect(builder.having('COUNT(*) > 1')).toBe(builder);
         expect(builder.limit(10)).toBe(builder);

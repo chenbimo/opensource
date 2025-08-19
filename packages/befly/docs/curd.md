@@ -506,35 +506,72 @@ const result = await processOrder(orderData);
 ### 支持的格式
 
 ```javascript
-// 1. 数组格式 - 字段#方向
+// 唯一支持的格式：一维数组，必须指定排序方向
 const users = await db.getList('users', {
-    orderBy: ['created_at#DESC', 'name#ASC', 'id'] // id 默认 ASC
+    orderBy: ['created_at#DESC', 'name#ASC', 'id#DESC']
 });
 
-// 2. 数组格式 - [字段, 方向] 子数组
+// 单个字段排序
 const users = await db.getList('users', {
-    orderBy: [
-        ['created_at', 'DESC'],
-        ['name', 'ASC'],
-        ['id'] // 只有字段名，默认 ASC
-    ]
+    orderBy: ['created_at#DESC']
 });
 
-// 3. 混合格式
-const users = await db.getList('users', {
-    orderBy: [
-        'created_at#DESC', // 字段#方向
-        ['name', 'ASC'], // [字段, 方向]
-        'id' // 只有字段名
-    ]
-});
-
-// 4. 在查询构造器中使用
+// 在查询构造器中使用
 const builder = db
     .query()
     .from('users')
-    .orderBy(['created_at#DESC', 'name#ASC']) // 一次性设置多个排序
+    .orderBy(['name#ASC', 'id#DESC']) // 必须是数组格式
     .limit(10);
+```
+
+### 排序规则
+
+- **必须格式**：必须是数组，数组中每个元素必须是 `字段名#方向` 格式
+- **必须方向**：每个字段都必须明确指定 `ASC`（升序）或 `DESC`（降序）
+- **大小写不敏感**：`ASC`、`asc`、`DESC`、`desc` 都可以
+- **多字段排序**：按数组顺序依次排序
+- **严格验证**：不符合格式的会抛出错误
+
+### 示例
+
+```javascript
+// ✅ 正确格式
+const users = await db.getList('users', {
+    orderBy: ['created_at#DESC'] // 按创建时间降序
+});
+
+// ✅ 多字段排序
+const users = await db.getList('users', {
+    orderBy: [
+        'status#ASC', // 先按状态升序
+        'created_at#DESC', // 再按创建时间降序
+        'name#ASC' // 最后按姓名升序
+    ]
+});
+
+// ✅ 大小写不敏感
+const users = await db.getList('users', {
+    orderBy: ['name#asc', 'id#desc']
+});
+
+// ✅ 在查询构造器中使用
+const { sql, params } = db.query().select(['id', 'name', 'created_at']).from('users').where({ status: 1 }).orderBy(['created_at#DESC', 'name#ASC']).limit(20).toSelectSql();
+```
+
+### 错误示例
+
+```javascript
+// ❌ 不是数组格式
+orderBy: 'created_at#DESC';
+
+// ❌ 缺少排序方向
+orderBy: ['created_at', 'name'];
+
+// ❌ 无效排序方向
+orderBy: ['created_at#INVALID'];
+
+// ❌ 空字段名
+orderBy: ['#ASC'];
 ```
 
 ## 错误处理
