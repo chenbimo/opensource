@@ -1,6 +1,6 @@
 {
     "name": "yidocs",
-    "version": "2.1.4",
+    "version": "2.1.5",
     "description": "yidocs(易文档) - 文档模板我的是的",
     "type": "module",
     "main": "index.js",
