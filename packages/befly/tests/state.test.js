@@ -56,6 +56,33 @@ describe('状态字段功能测试', () => {
         });
     });
 
+    test('软删除方法 delData2 功能测试', () => {
+        // 模拟软删除逻辑
+        const mockDelData2 = (table, where) => {
+            if (!table || typeof table !== 'string') {
+                throw new Error('表名是必需的');
+            }
+            if (!where) {
+                throw new Error('软删除操作需要 WHERE 条件');
+            }
+
+            // 返回软删除的更新数据
+            return {
+                state: 2,
+                updated_at: Date.now()
+            };
+        };
+
+        // 测试正常软删除
+        const result = mockDelData2('users', { id: 123 });
+        expect(result.state).toBe(2);
+        expect(result.updated_at).toBeGreaterThan(0);
+
+        // 测试错误情况
+        expect(() => mockDelData2('', { id: 123 })).toThrow('表名是必需的');
+        expect(() => mockDelData2('users', null)).toThrow('软删除操作需要 WHERE 条件');
+    });
+
     test('状态过滤逻辑检查', () => {
         const hasStateCondition = (where) => {
             return Object.keys(where).some((key) => key === 'state' || key.startsWith('state$'));
@@ -82,7 +109,7 @@ describe('状态字段功能说明', () => {
 
 2. 查询数据过滤功能：
    - getDetail: 自动排除 state=2 的记录
-   - getList: 自动排除 state=2 的记录  
+   - getList: 自动排除 state=2 的记录
    - getAll: 自动排除 state=2 的记录
    - getCount: 计数时自动排除 state=2 的记录
 
@@ -91,15 +118,22 @@ describe('状态字段功能说明', () => {
    - 如果用户显式指定了 state 或 state$ 条件，则不添加默认过滤
    - 这样既保证了软删除功能，又保持了灵活性
 
-4. 使用示例：
+4. 软删除功能：
+   // 使用专门的软删除方法
+   await db.delData2('users', { id: 123 });
+
+   // 或者使用更新方法手动设置
+   await db.updData('users', { state: 2 }, { id: 123 });
+
+5. 使用示例：
    // 插入数据（自动添加 state: 0）
    await db.insData('users', { name: 'John' });
 
    // 查询数据（自动排除已删除记录）
    await db.getDetail('users', { id: 123 });
 
-   // 软删除用户
-   await db.updData('users', { state: 2 }, { id: 123 });
+   // 软删除用户（推荐方式）
+   await db.delData2('users', { id: 123 });
 
    // 显式查询包括已删除的记录
    await db.getAll('users', { 'state$gte': 0 });

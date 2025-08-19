@@ -383,6 +383,32 @@ export default {
                         }
                     }
 
+                    // 私有方法：软删除数据（支持传入连接对象）
+                    async #delData2WithConn(table, where, conn = null) {
+                        if (!table || typeof table !== 'string') {
+                            throw new Error('表名是必需的');
+                        }
+
+                        if (!where) {
+                            throw new Error('软删除操作需要 WHERE 条件');
+                        }
+
+                        try {
+                            // 软删除：将 state 设置为 2，同时更新 updated_at
+                            const updateData = {
+                                state: 2,
+                                updated_at: Date.now()
+                            };
+
+                            const builder = createQueryBuilder().where(where);
+                            const { sql, params } = builder.toUpdateSql(table, updateData);
+                            return await this.#executeWithConn(sql, params, conn);
+                        } catch (error) {
+                            Logger.error('delData2 执行失败:', error);
+                            throw error;
+                        }
+                    }
+
                     // 私有方法：批量插入（支持传入连接对象）
                     async #insBatchWithConn(table, dataArray, conn = null) {
                         if (!table || typeof table !== 'string') {
@@ -473,6 +499,11 @@ export default {
                         return await this.#delDataWithConn(table, where);
                     }
 
+                    // 软删除数据 - 将 state 设置为 2
+                    async delData2(table, where) {
+                        return await this.#delData2WithConn(table, where);
+                    }
+
                     // 批量插入 - 增强版，自动添加 ID 和时间戳
                     async insBatch(table, dataArray) {
                         return await this.#insBatchWithConn(table, dataArray);
@@ -527,6 +558,10 @@ export default {
 
                                 delData: async (table, where) => {
                                     return await this.#delDataWithConn(table, where, conn);
+                                },
+
+                                delData2: async (table, where) => {
+                                    return await this.#delData2WithConn(table, where, conn);
                                 },
 
                                 getCount: async (table, options = {}) => {

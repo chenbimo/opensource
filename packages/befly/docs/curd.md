@@ -179,6 +179,31 @@ console.log(result.affectedRows);
 #### delData - 删除数据
 
 ```javascript
+// 物理删除数据
+const result = await db.delData(
+    'users',
+    { id: 1 } // where 条件
+);
+
+console.log(result.affectedRows);
+```
+
+#### delData2 - 软删除数据
+
+```javascript
+// 软删除数据（将 state 设置为 2）
+const result = await db.delData2(
+    'users',
+    { id: 1 } // where 条件
+);
+
+// 软删除会自动：
+// 1. 将 state 设置为 2
+// 2. 更新 updated_at 时间戳
+console.log(result.affectedRows);
+```
+
+```javascript
 // 删除数据（软删除）
 const result = await db.delData('users', {
     id: 1,
@@ -418,7 +443,7 @@ const result = await db.trans(async (tx) => {
 
 ### 高级事务 - 支持所有CURD方法
 
-事务中支持所有高级数据操作方法：`getDetail`、`getList`、`getAll`、`insData`、`updData`、`delData`、`getCount`、`insBatch`
+事务中支持所有高级数据操作方法：`getDetail`、`getList`、`getAll`、`insData`、`updData`、`delData`、`delData2`、`getCount`、`insBatch`
 
 ```javascript
 // 使用高级方法的事务
@@ -489,6 +514,7 @@ const result = await processOrder(orderData);
 | `insData(table, data)`        | 插入单条记录          | `await tx.insData('users', { name: 'John', email: 'john@example.com' })`     |
 | `updData(table, data, where)` | 更新记录              | `await tx.updData('users', { status: 1 }, { id: 1 })`                        |
 | `delData(table, where)`       | 删除记录              | `await tx.delData('users', { id: 1 })`                                       |
+| `delData2(table, where)`      | 软删除记录            | `await tx.delData2('users', { id: 1 })`                                      |
 | `getCount(table, options)`    | 获取记录总数          | `await tx.getCount('users', { where: { status: 1 } })`                       |
 | `insBatch(table, dataArray)`  | 批量插入              | `await tx.insBatch('users', [{ name: 'John' }, { name: 'Jane' }])`           |
 
@@ -498,7 +524,7 @@ const result = await processOrder(orderData);
 - ✅ **完整CURD支持**：支持所有高级数据库操作方法
 - ✅ **一级属性where条件**：事务中的方法完全支持新的where条件格式
 - ✅ **自动ID和时间戳**：`insData` 和 `insBatch` 自动添加ID和时间戳
-- ✅ **安全的更新删除**：`updData` 和 `delData` 必须提供where条件
+- ✅ **安全的更新删除**：`updData`、`delData` 和 `delData2` 必须提供where条件
 - ✅ **JOIN查询支持**：`getDetail`、`getList`、`getAll` 支持leftJoin
 - ✅ **状态字段和软删除**：自动添加状态字段，智能过滤已删除记录
 
@@ -569,10 +595,13 @@ await db.getDetail('users', { id: 123, state: 1 });
 
 ### 软删除操作
 
-要软删除记录，使用 `updData` 方法将状态设置为 2：
+要软删除记录，推荐使用专门的 `delData2` 方法：
 
 ```javascript
-// 软删除用户
+// 软删除用户（推荐方式）
+await db.delData2('users', { id: 123 });
+
+// 或者使用 updData 方法手动设置
 await db.updData('users', { state: 2 }, { id: 123 });
 
 // 恢复已删除的用户
