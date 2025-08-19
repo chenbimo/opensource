@@ -31,7 +31,10 @@ export default {
                     // 重连设置
                     reconnect: true,
                     // 避免连接超时
-                    keepAliveDelay: 30000
+                    keepAliveDelay: 30000,
+                    insertIdAsNumber: true,
+                    decimalAsNumber: true,
+                    bigIntAsNumber: true
                 };
 
                 // 创建连接池
