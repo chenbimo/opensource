@@ -8,7 +8,7 @@ import { Jwt } from './utils/jwt.js';
 import { validator } from './utils/validate.js';
 import { Crypto2 } from './utils/crypto.js';
 import { Xml } from './libs/xml.js';
-import { isEmptyObject, isType, pickFields, sortPlugins, RYes, RNo, filename2, dirname2 } from './utils/util.js';
+import { isEmptyObject, isType, pickFields, sortPlugins, RYes, RNo, filename2, dirname2, filterLogFields } from './utils/util.js';
 
 const setCorsOptions = (req) => {
     return {
@@ -442,7 +442,7 @@ class Befly {
                             请求路径: apiPath,
                             请求方法: req.method,
                             用户信息: ctx.user,
-                            请求体: ctx.body
+                            请求体: filterLogFields(ctx.body, Env.LOG_EXCLUDE_FIELDS)
                         });
 
                         // 登录验证 auth 有3种值 分别为 true、false、['admin', 'user']

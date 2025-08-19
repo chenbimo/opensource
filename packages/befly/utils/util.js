@@ -171,3 +171,25 @@ export const filename2 = (importMetaUrl) => {
 export const dirname2 = (importMetaUrl) => {
     return path.dirname(fileURLToPath(importMetaUrl));
 };
+
+// 过滤日志字段的函数
+export const filterLogFields = (body, excludeFields = []) => {
+    if (!body || typeof body !== 'object') return body;
+
+    // 如果是字符串，按逗号分割并清理空格
+    let fieldsArray = excludeFields;
+    if (typeof excludeFields === 'string') {
+        fieldsArray = excludeFields
+            .split(',')
+            .map((field) => field.trim())
+            .filter((field) => field.length > 0);
+    }
+
+    const filtered = { ...body };
+    fieldsArray.forEach((field) => {
+        if (field in filtered) {
+            delete filtered[field];
+        }
+    });
+    return filtered;
+};
