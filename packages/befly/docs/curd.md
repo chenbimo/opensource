@@ -134,8 +134,8 @@ const count = await db.getCount('users u', {
 const count = await db.getCount('users', {
     where: {
         status: 1,
-        created_at: { $gte: '2024-01-01' },
-        role: { $in: ['admin', 'user'] }
+        created_at$gte: '2024-01-01',
+        role$in: ['admin', 'user']
     }
 });
 ```
@@ -186,7 +186,7 @@ const result = await db.delData('users', {
 // 批量删除
 const result = await db.delData('users', {
     status: 0,
-    created_at: { $lt: '2023-01-01' }
+    created_at$lt: '2023-01-01'
 });
 ```
 
@@ -207,34 +207,65 @@ const result = await db.batchInsert('users', users);
 
 ### 支持的操作符
 
+#### 操作符对照表
+
+| 操作符   | 一级属性格式                       | SQL 输出                  | 说明             |
+| -------- | ---------------------------------- | ------------------------- | ---------------- |
+| 等于     | `{ name: 'John' }`                 | `name = ?`                | 基础等于条件     |
+| 不等于   | `{ 'status$ne': 0 }`               | `status != ?`             | 不等于           |
+| 大于     | `{ 'age$gt': 18 }`                 | `age > ?`                 | 大于             |
+| 大于等于 | `{ 'age$gte': 18 }`                | `age >= ?`                | 大于等于         |
+| 小于     | `{ 'age$lt': 65 }`                 | `age < ?`                 | 小于             |
+| 小于等于 | `{ 'age$lte': 65 }`                | `age <= ?`                | 小于等于         |
+| 包含     | `{ 'role$in': ['admin', 'user'] }` | `role IN (?, ?)`          | IN 条件          |
+| 不包含   | `{ 'status$nin': [0, -1] }`        | `status NOT IN (?, ?)`    | NOT IN 条件      |
+| 模糊匹配 | `{ 'name$like': '%john%' }`        | `name LIKE ?`             | LIKE 条件        |
+| 不匹配   | `{ 'name$notLike': '%test%' }`     | `name NOT LIKE ?`         | NOT LIKE 条件    |
+| 区间     | `{ 'age$between': [18, 65] }`      | `age BETWEEN ? AND ?`     | BETWEEN 条件     |
+| 不在区间 | `{ 'age$notBetween': [18, 65] }`   | `age NOT BETWEEN ? AND ?` | NOT BETWEEN 条件 |
+| 为空     | `{ 'deleted_at$null': true }`      | `deleted_at IS NULL`      | 空值检查         |
+| 不为空   | `{ 'email$notNull': true }`        | `email IS NOT NULL`       | 非空检查         |
+
+#### 基础用法
+
 ```javascript
 // 比较操作符
 const users = await db.getList('users', {
     where: {
-        age: { $gt: 18 }, // age > 18
-        score: { $gte: 60 }, // score >= 60
-        level: { $lt: 10 }, // level < 10
-        points: { $lte: 1000 }, // points <= 1000
-        status: { $ne: 0 } // status != 0
+        age$gt: 18, // age > 18
+        score$gte: 60, // score >= 60
+        level$lt: 10, // level < 10
+        points$lte: 1000, // points <= 1000
+        status$ne: 0 // status != 0
     }
 });
 
 // 包含操作符
 const users = await db.getList('users', {
     where: {
-        role: { $in: ['admin', 'moderator'] }, // role IN (...)
-        status: { $notIn: [0, -1] }, // status NOT IN (...)
-        name: { $like: '%john%' }, // name LIKE '%john%'
-        email: { $notLike: '%@temp.com' } // email NOT LIKE '%@temp.com'
+        role$in: ['admin', 'moderator'], // role IN (...)
+        status$nin: [0, -1], // status NOT IN (...)
+        name$like: '%john%', // name LIKE '%john%'
+        email$notLike: '%@temp.com' // email NOT LIKE '%@temp.com'
     }
 });
 
 // 范围和空值操作符
 const users = await db.getList('users', {
     where: {
-        created_at: { $between: ['2024-01-01', '2024-12-31'] }, // BETWEEN
-        deleted_at: { $null: true }, // IS NULL
-        email: { $notNull: true } // IS NOT NULL
+        created_at$between: ['2024-01-01', '2024-12-31'], // BETWEEN
+        deleted_at$null: true, // IS NULL
+        email$notNull: true // IS NOT NULL
+    }
+});
+
+// 混合使用
+const users = await db.getList('users', {
+    where: {
+        status: 1, // 等于条件
+        age$gte: 18, // 大于等于
+        role$in: ['admin', 'user'], // IN 条件
+        name$like: '%john%' // LIKE 条件
     }
 });
 ```
@@ -247,7 +278,7 @@ const users = await db.getList('users', {
     where: {
         status: 1,
         role: 'admin',
-        age: { $gte: 18 }
+        age$gte: 18
     }
 });
 
@@ -255,7 +286,7 @@ const users = await db.getList('users', {
 const users = await db.getList('users', {
     where: {
         status: 1,
-        $or: [{ role: 'admin' }, { permissions: { $like: '%manage%' } }]
+        $or: [{ role: 'admin' }, { permissions$like: '%manage%' }]
     }
 });
 
@@ -265,9 +296,21 @@ const users = await db.getList('users', {
         $and: [
             { status: 1 },
             {
-                $or: [{ role: 'admin' }, { level: { $gte: 5 } }]
+                $or: [{ role: 'admin' }, { level$gte: 5 }]
             }
         ]
+    }
+});
+
+// 实际应用示例
+const users = await db.getList('users', {
+    where: {
+        age$between: [18, 65], // 年龄在18-65之间
+        role$in: ['admin', 'user'], // 角色是admin或user
+        status$ne: 0, // 状态不等于0
+        created_at$gte: '2024-01-01', // 创建时间大于等于2024-01-01
+        email$notNull: true, // 邮箱不为空
+        name$like: '%john%' // 姓名包含john
     }
 });
 ```
@@ -328,7 +371,7 @@ const usersWithLatestPost = await db.getAll('users u', {
 const builder = db.query();
 
 // 链式构建查询
-const { sql, params } = builder.select(['u.id', 'u.name', 'u.email']).from('users u').where('u.status', 1).where('u.age', { $gte: 18 }).leftJoin('user_profiles up', 'u.id = up.user_id').orderBy(['u.created_at#DESC']).limit(10).toSelectSql();
+const { sql, params } = builder.select(['u.id', 'u.name', 'u.email']).from('users u').where('u.status', 1).where({ 'u.age$gte': 18 }).leftJoin('user_profiles up', 'u.id = up.user_id').orderBy(['u.created_at#DESC']).limit(10).toSelectSql();
 
 // 执行查询
 const result = await db.execute(sql, params);
@@ -337,7 +380,20 @@ const result = await db.execute(sql, params);
 ### 复杂查询构建
 
 ```javascript
-const builder = db.query().select(['u.id', 'u.name', 'u.email', 'up.avatar', 'COUNT(p.id) as post_count', 'MAX(p.created_at) as last_post_date']).from('users u').leftJoin('user_profiles up', 'u.id = up.user_id').leftJoin('posts p', 'u.id = p.user_id AND p.status = 1').where({ 'u.status': 1 }).where('u.created_at', { $gte: '2024-01-01' }).groupBy(['u.id']).having('post_count > 0').orderBy(['last_post_date#DESC', 'u.name#ASC']).limit(50);
+const builder = db
+    .query()
+    .select(['u.id', 'u.name', 'u.email', 'up.avatar', 'COUNT(p.id) as post_count', 'MAX(p.created_at) as last_post_date'])
+    .from('users u')
+    .leftJoin('user_profiles up', 'u.id = up.user_id')
+    .leftJoin('posts p', 'u.id = p.user_id AND p.status = 1')
+    .where({
+        'u.status': 1,
+        'u.created_at$gte': '2024-01-01'
+    })
+    .groupBy(['u.id'])
+    .having('post_count > 0')
+    .orderBy(['last_post_date#DESC', 'u.name#ASC'])
+    .limit(50);
 
 const { sql, params } = builder.toSelectSql();
 const users = await db.execute(sql, params);

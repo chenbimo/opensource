@@ -58,6 +58,7 @@ export class SqlBuilder {
             if (value === undefined) {
                 return;
             }
+
             if (key === '$and') {
                 if (Array.isArray(value)) {
                     value.forEach((condition) => this._processWhereConditions(condition));
@@ -81,83 +82,85 @@ export class SqlBuilder {
                         this._params.push(...tempParams);
                     }
                 }
-            } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                // 字段级操作符
-                Object.entries(value).forEach(([operator, operatorValue]) => {
-                    this._validateParam(operatorValue);
+            } else if (key.includes('$')) {
+                // 一级属性格式：age$gt, role$in 等
+                const lastDollarIndex = key.lastIndexOf('$');
+                const fieldName = key.substring(0, lastDollarIndex);
+                const operator = '$' + key.substring(lastDollarIndex + 1);
 
-                    switch (operator) {
-                        case '$ne':
-                        case '$not':
-                            this._where.push(`${key} != ?`);
-                            this._params.push(operatorValue);
-                            break;
-                        case '$in':
-                            if (Array.isArray(operatorValue) && operatorValue.length > 0) {
-                                const placeholders = operatorValue.map(() => '?').join(',');
-                                this._where.push(`${key} IN (${placeholders})`);
-                                this._params.push(...operatorValue);
-                            }
-                            break;
-                        case '$nin':
-                        case '$notIn':
-                            if (Array.isArray(operatorValue) && operatorValue.length > 0) {
-                                const placeholders = operatorValue.map(() => '?').join(',');
-                                this._where.push(`${key} NOT IN (${placeholders})`);
-                                this._params.push(...operatorValue);
-                            }
-                            break;
-                        case '$like':
-                            this._where.push(`${key} LIKE ?`);
-                            this._params.push(operatorValue);
-                            break;
-                        case '$notLike':
-                            this._where.push(`${key} NOT LIKE ?`);
-                            this._params.push(operatorValue);
-                            break;
-                        case '$gt':
-                            this._where.push(`${key} > ?`);
-                            this._params.push(operatorValue);
-                            break;
-                        case '$gte':
-                            this._where.push(`${key} >= ?`);
-                            this._params.push(operatorValue);
-                            break;
-                        case '$lt':
-                            this._where.push(`${key} < ?`);
-                            this._params.push(operatorValue);
-                            break;
-                        case '$lte':
-                            this._where.push(`${key} <= ?`);
-                            this._params.push(operatorValue);
-                            break;
-                        case '$between':
-                            if (Array.isArray(operatorValue) && operatorValue.length === 2) {
-                                this._where.push(`${key} BETWEEN ? AND ?`);
-                                this._params.push(operatorValue[0], operatorValue[1]);
-                            }
-                            break;
-                        case '$notBetween':
-                            if (Array.isArray(operatorValue) && operatorValue.length === 2) {
-                                this._where.push(`${key} NOT BETWEEN ? AND ?`);
-                                this._params.push(operatorValue[0], operatorValue[1]);
-                            }
-                            break;
-                        case '$null':
-                            if (operatorValue === true) {
-                                this._where.push(`${key} IS NULL`);
-                            }
-                            break;
-                        case '$notNull':
-                            if (operatorValue === true) {
-                                this._where.push(`${key} IS NOT NULL`);
-                            }
-                            break;
-                        default:
-                            this._where.push(`${key} = ?`);
-                            this._params.push(operatorValue);
-                    }
-                });
+                this._validateParam(value);
+
+                switch (operator) {
+                    case '$ne':
+                    case '$not':
+                        this._where.push(`${fieldName} != ?`);
+                        this._params.push(value);
+                        break;
+                    case '$in':
+                        if (Array.isArray(value) && value.length > 0) {
+                            const placeholders = value.map(() => '?').join(',');
+                            this._where.push(`${fieldName} IN (${placeholders})`);
+                            this._params.push(...value);
+                        }
+                        break;
+                    case '$nin':
+                    case '$notIn':
+                        if (Array.isArray(value) && value.length > 0) {
+                            const placeholders = value.map(() => '?').join(',');
+                            this._where.push(`${fieldName} NOT IN (${placeholders})`);
+                            this._params.push(...value);
+                        }
+                        break;
+                    case '$like':
+                        this._where.push(`${fieldName} LIKE ?`);
+                        this._params.push(value);
+                        break;
+                    case '$notLike':
+                        this._where.push(`${fieldName} NOT LIKE ?`);
+                        this._params.push(value);
+                        break;
+                    case '$gt':
+                        this._where.push(`${fieldName} > ?`);
+                        this._params.push(value);
+                        break;
+                    case '$gte':
+                        this._where.push(`${fieldName} >= ?`);
+                        this._params.push(value);
+                        break;
+                    case '$lt':
+                        this._where.push(`${fieldName} < ?`);
+                        this._params.push(value);
+                        break;
+                    case '$lte':
+                        this._where.push(`${fieldName} <= ?`);
+                        this._params.push(value);
+                        break;
+                    case '$between':
+                        if (Array.isArray(value) && value.length === 2) {
+                            this._where.push(`${fieldName} BETWEEN ? AND ?`);
+                            this._params.push(value[0], value[1]);
+                        }
+                        break;
+                    case '$notBetween':
+                        if (Array.isArray(value) && value.length === 2) {
+                            this._where.push(`${fieldName} NOT BETWEEN ? AND ?`);
+                            this._params.push(value[0], value[1]);
+                        }
+                        break;
+                    case '$null':
+                        if (value === true) {
+                            this._where.push(`${fieldName} IS NULL`);
+                        }
+                        break;
+                    case '$notNull':
+                        if (value === true) {
+                            this._where.push(`${fieldName} IS NOT NULL`);
+                        }
+                        break;
+                    default:
+                        this._where.push(`${fieldName} = ?`);
+                        this._params.push(value);
+                }
             } else {
                 // 简单的等于条件
                 this._validateParam(value);
