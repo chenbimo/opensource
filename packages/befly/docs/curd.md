@@ -159,11 +159,11 @@ const result = await db.insData('users', {
 console.log(result.insertId);
 ```
 
-#### upData - 更新数据
+#### updData - 更新数据
 
 ```javascript
 // 更新数据
-const result = await db.upData(
+const result = await db.updData(
     'users',
     {
         name: 'Updated Name',
@@ -418,7 +418,7 @@ const result = await db.trans(async (tx) => {
 
 ### 高级事务 - 支持所有CURD方法
 
-事务中支持所有高级数据操作方法：`getDetail`、`getList`、`getAll`、`insData`、`upData`、`delData`、`getCount`、`insBatch`
+事务中支持所有高级数据操作方法：`getDetail`、`getList`、`getAll`、`insData`、`updData`、`delData`、`getCount`、`insBatch`
 
 ```javascript
 // 使用高级方法的事务
@@ -442,7 +442,7 @@ const result = await db.trans(async (tx) => {
         });
     } else {
         // 更新用户信息
-        await tx.upData('users', { status: 1, last_login: new Date() }, { id: user.id });
+        await tx.updData('users', { status: 1, last_login: new Date() }, { id: user.id });
     }
 
     // 获取用户列表验证
@@ -479,18 +479,18 @@ const result = await processOrder(orderData);
 
 ### 事务中支持的方法
 
-| 方法                         | 描述                  | 用法示例                                                                     |
-| ---------------------------- | --------------------- | ---------------------------------------------------------------------------- |
-| `execute(sql, params)`       | 执行原始SQL           | `await tx.execute('SELECT * FROM users WHERE id = ?', [1])`                  |
-| `query(sql, params)`         | 执行查询（同execute） | `await tx.query('INSERT INTO users (name) VALUES (?)', ['John'])`            |
-| `getDetail(table, options)`  | 获取单条记录          | `await tx.getDetail('users', { id: 1 })`                                     |
-| `getList(table, options)`    | 获取列表（支持分页）  | `await tx.getList('users', { where: { status: 1 }, page: 1, pageSize: 10 })` |
-| `getAll(table, options)`     | 获取所有记录          | `await tx.getAll('users', { where: { status: 1 } })`                         |
-| `insData(table, data)`       | 插入单条记录          | `await tx.insData('users', { name: 'John', email: 'john@example.com' })`     |
-| `upData(table, data, where)` | 更新记录              | `await tx.upData('users', { status: 1 }, { id: 1 })`                         |
-| `delData(table, where)`      | 删除记录              | `await tx.delData('users', { id: 1 })`                                       |
-| `getCount(table, options)`   | 获取记录总数          | `await tx.getCount('users', { where: { status: 1 } })`                       |
-| `insBatch(table, dataArray)` | 批量插入              | `await tx.insBatch('users', [{ name: 'John' }, { name: 'Jane' }])`           |
+| 方法                          | 描述                  | 用法示例                                                                     |
+| ----------------------------- | --------------------- | ---------------------------------------------------------------------------- |
+| `execute(sql, params)`        | 执行原始SQL           | `await tx.execute('SELECT * FROM users WHERE id = ?', [1])`                  |
+| `query(sql, params)`          | 执行查询（同execute） | `await tx.query('INSERT INTO users (name) VALUES (?)', ['John'])`            |
+| `getDetail(table, options)`   | 获取单条记录          | `await tx.getDetail('users', { id: 1 })`                                     |
+| `getList(table, options)`     | 获取列表（支持分页）  | `await tx.getList('users', { where: { status: 1 }, page: 1, pageSize: 10 })` |
+| `getAll(table, options)`      | 获取所有记录          | `await tx.getAll('users', { where: { status: 1 } })`                         |
+| `insData(table, data)`        | 插入单条记录          | `await tx.insData('users', { name: 'John', email: 'john@example.com' })`     |
+| `updData(table, data, where)` | 更新记录              | `await tx.updData('users', { status: 1 }, { id: 1 })`                        |
+| `delData(table, where)`       | 删除记录              | `await tx.delData('users', { id: 1 })`                                       |
+| `getCount(table, options)`    | 获取记录总数          | `await tx.getCount('users', { where: { status: 1 } })`                       |
+| `insBatch(table, dataArray)`  | 批量插入              | `await tx.insBatch('users', [{ name: 'John' }, { name: 'Jane' }])`           |
 
 ### 事务特性
 
@@ -498,8 +498,86 @@ const result = await processOrder(orderData);
 - ✅ **完整CURD支持**：支持所有高级数据库操作方法
 - ✅ **一级属性where条件**：事务中的方法完全支持新的where条件格式
 - ✅ **自动ID和时间戳**：`insData` 和 `insBatch` 自动添加ID和时间戳
-- ✅ **安全的更新删除**：`upData` 和 `delData` 必须提供where条件
+- ✅ **安全的更新删除**：`updData` 和 `delData` 必须提供where条件
 - ✅ **JOIN查询支持**：`getDetail`、`getList`、`getAll` 支持leftJoin
+- ✅ **状态字段和软删除**：自动添加状态字段，智能过滤已删除记录
+
+## 状态字段和软删除功能
+
+### 默认状态字段
+
+所有通过 `insData` 和 `insBatch` 插入的数据都会自动添加 `state` 字段，默认值为 `0`：
+
+```javascript
+// 插入单条数据 - 自动添加 state: 0
+await db.insData('users', {
+    name: 'John',
+    email: 'john@example.com'
+});
+// 实际插入的数据：{ name: 'John', email: 'john@example.com', state: 0, id: ..., created_at: ..., updated_at: ... }
+
+// 指定状态值
+await db.insData('users', {
+    name: 'Jane',
+    email: 'jane@example.com',
+    state: 1 // 保持指定的状态值
+});
+
+// 批量插入 - 自动处理状态字段
+await db.insBatch('users', [
+    { name: 'User1' }, // 自动添加 state: 0
+    { name: 'User2', state: 1 }, // 保持 state: 1
+    { name: 'User3' } // 自动添加 state: 0
+]);
+```
+
+### 自动软删除过滤
+
+所有查询方法都会自动排除 `state = 2` 的记录（已删除状态）：
+
+```javascript
+// 这些查询都会自动排除 state=2 的记录
+await db.getDetail('users', { id: 123 });
+await db.getList('users', { name: 'John' });
+await db.getAll('users', { age$gte: 18 });
+await db.getCount('users', { status: 'active' });
+```
+
+### 显式状态查询
+
+如果需要查询特定状态的记录，可以显式指定状态条件：
+
+```javascript
+// 只查询已删除的记录
+await db.getAll('users', { state$eq: 2 });
+
+// 查询所有记录（包括已删除的）
+await db.getAll('users', { state$gte: 0 });
+
+// 查询活跃状态的记录
+await db.getAll('users', { state$in: [0, 1] });
+
+// 直接使用 state 字段
+await db.getDetail('users', { id: 123, state: 1 });
+```
+
+### 状态值约定
+
+- `state: 0` - 正常状态（默认）
+- `state: 1` - 其他业务状态（如禁用、待审核等）
+- `state: 2` - 已删除状态（软删除）
+
+### 软删除操作
+
+要软删除记录，使用 `updData` 方法将状态设置为 2：
+
+```javascript
+// 软删除用户
+await db.updData('users', { state: 2 }, { id: 123 });
+
+// 恢复已删除的用户
+await db.updData('users', { state: 0 }, { id: 123, state: 2 });
+```
 
 ## orderBy 排序
 

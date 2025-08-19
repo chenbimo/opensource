@@ -78,7 +78,7 @@ export default {
                         return createQueryBuilder();
                     }
 
-                    // 私有方法：通用数据处理函数 - 自动添加ID和时间戳
+                    // 私有方法：通用数据处理函数 - 自动添加ID、时间戳和状态
                     async #processDataForInsert(data) {
                         const now = Date.now();
 
@@ -87,6 +87,7 @@ export default {
                                 data.map(async (item) => ({
                                     ...item,
                                     id: await befly.redis.genTimeID(),
+                                    state: item.state !== undefined ? item.state : 0,
                                     created_at: now,
                                     updated_at: now
                                 }))
@@ -95,10 +96,24 @@ export default {
                             return {
                                 ...data,
                                 id: await befly.redis.genTimeID(),
+                                state: data.state !== undefined ? data.state : 0,
                                 created_at: now,
                                 updated_at: now
                             };
                         }
+                    }
+
+                    // 私有方法：添加默认的state过滤条件
+                    #addDefaultStateFilter(where = {}) {
+                        // 检查是否已有state相关条件
+                        const hasStateCondition = Object.keys(where).some((key) => key === 'state' || key.startsWith('state$'));
+
+                        // 如果没有state条件，添加默认过滤
+                        if (!hasStateCondition) {
+                            return { ...where, state$ne: 2 };
+                        }
+
+                        return where;
                     }
 
                     // 私有方法：执行 SQL（支持传入连接对象）
@@ -147,7 +162,9 @@ export default {
                         const { where = {}, fields = '*', leftJoins = [] } = typeof options === 'object' && !Array.isArray(options) ? options : { where: options };
 
                         try {
-                            const builder = createQueryBuilder().select(fields).from(table).where(where).limit(1);
+                            // 添加默认的state过滤条件
+                            const filteredWhere = this.#addDefaultStateFilter(where);
+                            const builder = createQueryBuilder().select(fields).from(table).where(filteredWhere).limit(1);
 
                             // 添加 LEFT JOIN
                             leftJoins.forEach((join) => {
@@ -179,7 +196,9 @@ export default {
                         const { where = {}, fields = '*', leftJoins = [], orderBy = [], groupBy = [], having = [], page = 1, pageSize = 10 } = options;
 
                         try {
-                            const builder = createQueryBuilder().select(fields).from(table).where(where);
+                            // 添加默认的state过滤条件
+                            const filteredWhere = this.#addDefaultStateFilter(where);
+                            const builder = createQueryBuilder().select(fields).from(table).where(filteredWhere);
 
                             // 添加 LEFT JOIN
                             leftJoins.forEach((join) => {
@@ -221,7 +240,7 @@ export default {
                             // 获取总数（如果需要分页）
                             let total = 0;
                             if (numPage > 0 && numPageSize > 0) {
-                                const countBuilder = createQueryBuilder().from(table).where(where);
+                                const countBuilder = createQueryBuilder().from(table).where(filteredWhere);
 
                                 // 计算总数时也要包含 JOIN
                                 leftJoins.forEach((join) => {
@@ -261,7 +280,9 @@ export default {
                         const { where = {}, fields = '*', leftJoins = [], orderBy = [] } = typeof options === 'object' && !Array.isArray(options) ? options : { where: options };
 
                         try {
-                            const builder = createQueryBuilder().select(fields).from(table).where(where);
+                            // 添加默认的state过滤条件
+                            const filteredWhere = this.#addDefaultStateFilter(where);
+                            const builder = createQueryBuilder().select(fields).from(table).where(filteredWhere);
 
                             // 添加 LEFT JOIN
                             leftJoins.forEach((join) => {
@@ -310,7 +331,7 @@ export default {
                     }
 
                     // 私有方法：更新数据（支持传入连接对象）
-                    async #upDataWithConn(table, data, where, conn = null) {
+                    async #updDataWithConn(table, data, where, conn = null) {
                         if (!table || typeof table !== 'string') {
                             throw new Error('表名是必需的');
                         }
@@ -337,7 +358,7 @@ export default {
                             const { sql, params } = builder.toUpdateSql(table, updateData);
                             return await this.#executeWithConn(sql, params, conn);
                         } catch (error) {
-                            Logger.error('upData 执行失败:', error);
+                            Logger.error('updData 执行失败:', error);
                             throw error;
                         }
                     }
@@ -392,7 +413,9 @@ export default {
                         const { where = {}, leftJoins = [] } = typeof options === 'object' && !Array.isArray(options) ? options : { where: options };
 
                         try {
-                            const builder = createQueryBuilder().from(table).where(where);
+                            // 添加默认的state过滤条件
+                            const filteredWhere = this.#addDefaultStateFilter(where);
+                            const builder = createQueryBuilder().from(table).where(filteredWhere);
 
                             // 添加 LEFT JOIN
                             leftJoins.forEach((join) => {
@@ -441,8 +464,8 @@ export default {
                     }
 
                     // 更新数据 - 增强版，自动添加 updated_at，过滤敏感字段
-                    async upData(table, data, where) {
-                        return await this.#upDataWithConn(table, data, where);
+                    async updData(table, data, where) {
+                        return await this.#updDataWithConn(table, data, where);
                     }
 
                     // 删除数据
@@ -498,8 +521,8 @@ export default {
                                     return await this.#insDataWithConn(table, data, conn);
                                 },
 
-                                upData: async (table, data, where) => {
-                                    return await this.#upDataWithConn(table, data, where, conn);
+                                updData: async (table, data, where) => {
+                                    return await this.#updDataWithConn(table, data, where, conn);
                                 },
 
                                 delData: async (table, where) => {
