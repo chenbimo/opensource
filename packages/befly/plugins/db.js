@@ -216,7 +216,7 @@ export default {
                             }
 
                             const { sql, params } = builder.toSelectSql();
-                            const list = await this.#executeWithConn(sql, params, conn);
+                            const rows = await this.#executeWithConn(sql, params, conn);
 
                             // 获取总数（如果需要分页）
                             let total = 0;
@@ -241,7 +241,7 @@ export default {
                             }
 
                             return {
-                                list: Array.isArray(list) ? list : [],
+                                rows: Array.isArray(rows) ? rows : [],
                                 total,
                                 page: numPage,
                                 pageSize: numPageSize
