@@ -173,23 +173,21 @@ export const dirname2 = (importMetaUrl) => {
 };
 
 // 过滤日志字段的函数
-export const filterLogFields = (body, excludeFields = []) => {
+export const filterLogFields = (body, excludeFields = '') => {
     if (!body || typeof body !== 'object') return body;
 
     // 如果是字符串，按逗号分割并清理空格
-    let fieldsArray = excludeFields;
-    if (typeof excludeFields === 'string') {
-        fieldsArray = excludeFields
-            .split(',')
-            .map((field) => field.trim())
-            .filter((field) => field.length > 0);
-    }
+    const fieldsArray = excludeFields
+        .split(',')
+        .map((field) => field.trim())
+        .filter((field) => field.length > 0);
 
-    const filtered = { ...body };
-    fieldsArray.forEach((field) => {
-        if (field in filtered) {
-            delete filtered[field];
+    // 创建新对象，只包含不在排除列表中的字段
+    const filtered = {};
+    for (const [key, value] of Object.entries(body)) {
+        if (!fieldsArray.includes(key)) {
+            filtered[key] = value;
         }
-    });
+    }
     return filtered;
 };
