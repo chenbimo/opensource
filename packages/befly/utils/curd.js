@@ -54,6 +54,10 @@ export class SqlBuilder {
         }
 
         Object.entries(whereObj).forEach(([key, value]) => {
+            // 跳过undefined值
+            if (value === undefined) {
+                return;
+            }
             if (key === '$and') {
                 if (Array.isArray(value)) {
                     value.forEach((condition) => this._processWhereConditions(condition));
@@ -165,6 +169,7 @@ export class SqlBuilder {
 
     where(condition, value = null) {
         if (typeof condition === 'object' && condition !== null) {
+            // 处理对象形式的where条件，会自动过滤undefined
             this._processWhereConditions(condition);
         } else if (value !== null) {
             this._validateParam(value);
