@@ -101,29 +101,36 @@ export default {
                         }
                     }
 
-                    // 执行原始 SQL - 核心方法
-                    async execute(sql, params = []) {
+                    // 私有方法：执行 SQL（支持传入连接对象）
+                    async #executeWithConn(sql, params = [], conn = null) {
                         if (!sql || typeof sql !== 'string') {
                             throw new Error('SQL 语句是必需的');
                         }
 
-                        let conn;
+                        let providedConn = conn;
+                        let shouldRelease = false;
+
                         try {
-                            conn = await this.#pool.getConnection();
+                            // 如果没有提供连接，从池中获取
+                            if (!providedConn) {
+                                providedConn = await this.#pool.getConnection();
+                                shouldRelease = true;
+                            }
 
                             if (Env.MYSQL_DEBUG === 1) {
                                 Logger.debug('执行SQL:', { sql, params });
                             }
 
-                            const result = await conn.query(sql, params);
+                            const result = await providedConn.query(sql, params);
                             return result;
                         } catch (error) {
                             Logger.error('SQL 执行失败:', { sql, params, error: error.message });
                             throw error;
                         } finally {
-                            if (conn) {
+                            // 只有当连接是我们获取的时候才释放
+                            if (shouldRelease && providedConn) {
                                 try {
-                                    conn.release();
+                                    providedConn.release();
                                 } catch (releaseError) {
                                     Logger.warn('连接释放警告:', releaseError.message);
                                 }
@@ -131,64 +138,13 @@ export default {
                         }
                     }
 
-                    // 事务处理
-                    async transaction(callback) {
-                        if (typeof callback !== 'function') {
-                            throw new Error('事务回调函数是必需的');
-                        }
-
-                        let conn;
-                        try {
-                            conn = await this.#pool.getConnection();
-                            await conn.beginTransaction();
-
-                            // 为回调函数提供连接对象
-                            const txMethods = {
-                                query: async (sql, params = []) => {
-                                    return await conn.query(sql, params);
-                                },
-                                execute: async (sql, params = []) => {
-                                    return await conn.query(sql, params);
-                                }
-                            };
-
-                            const result = await callback(txMethods);
-
-                            await conn.commit();
-                            return result;
-                        } catch (error) {
-                            if (conn) {
-                                try {
-                                    await conn.rollback();
-                                    Logger.info('事务已回滚');
-                                } catch (rollbackError) {
-                                    Logger.error('事务回滚失败:', rollbackError);
-                                }
-                            }
-                            throw error;
-                        } finally {
-                            if (conn) {
-                                try {
-                                    conn.release();
-                                } catch (releaseError) {
-                                    Logger.warn('连接释放警告:', releaseError.message);
-                                }
-                            }
-                        }
-                    }
-
-                    // 获取单条记录详情
-                    async getDetail(table, options = {}) {
+                    // 私有方法：获取单条记录详情（支持传入连接对象）
+                    async #getDetailWithConn(table, options = {}, conn = null) {
                         if (!table || typeof table !== 'string') {
                             throw new Error('表名是必需的');
                         }
 
-                        const {
-                            //
-                            where = {},
-                            fields = '*',
-                            leftJoins = []
-                        } = typeof options === 'object' && !Array.isArray(options) ? options : { where: options };
+                        const { where = {}, fields = '*', leftJoins = [] } = typeof options === 'object' && !Array.isArray(options) ? options : { where: options };
 
                         try {
                             const builder = createQueryBuilder().select(fields).from(table).where(where).limit(1);
@@ -206,7 +162,7 @@ export default {
                             });
 
                             const { sql, params } = builder.toSelectSql();
-                            const result = await this.execute(sql, params);
+                            const result = await this.#executeWithConn(sql, params, conn);
                             return result[0] || null;
                         } catch (error) {
                             Logger.error('getDetail 执行失败:', error);
@@ -214,8 +170,8 @@ export default {
                         }
                     }
 
-                    // 获取列表（支持分页）
-                    async getList(table, options = {}) {
+                    // 私有方法：获取列表（支持传入连接对象）
+                    async #getListWithConn(table, options = {}, conn = null) {
                         if (!table || typeof table !== 'string') {
                             throw new Error('表名是必需的');
                         }
@@ -260,7 +216,7 @@ export default {
                             }
 
                             const { sql, params } = builder.toSelectSql();
-                            const list = await this.execute(sql, params);
+                            const list = await this.#executeWithConn(sql, params, conn);
 
                             // 获取总数（如果需要分页）
                             let total = 0;
@@ -280,7 +236,7 @@ export default {
                                 });
 
                                 const { sql: countSql, params: countParams } = countBuilder.toCountSql();
-                                const countResult = await this.execute(countSql, countParams);
+                                const countResult = await this.#executeWithConn(countSql, countParams, conn);
                                 total = countResult[0]?.total || 0;
                             }
 
@@ -296,8 +252,8 @@ export default {
                         }
                     }
 
-                    // 获取所有记录
-                    async getAll(table, options = {}) {
+                    // 私有方法：获取所有记录（支持传入连接对象）
+                    async #getAllWithConn(table, options = {}, conn = null) {
                         if (!table || typeof table !== 'string') {
                             throw new Error('表名是必需的');
                         }
@@ -324,7 +280,7 @@ export default {
                             }
 
                             const { sql, params } = builder.toSelectSql();
-                            const result = await this.execute(sql, params);
+                            const result = await this.#executeWithConn(sql, params, conn);
                             return Array.isArray(result) ? result : [];
                         } catch (error) {
                             Logger.error('getAll 执行失败:', error);
@@ -332,8 +288,8 @@ export default {
                         }
                     }
 
-                    // 插入数据 - 增强版，自动添加 ID 和时间戳
-                    async insData(table, data) {
+                    // 私有方法：插入数据（支持传入连接对象）
+                    async #insDataWithConn(table, data, conn = null) {
                         if (!table || typeof table !== 'string') {
                             throw new Error('表名是必需的');
                         }
@@ -346,15 +302,15 @@ export default {
                             const processedData = await this.#processDataForInsert(data);
                             const builder = createQueryBuilder();
                             const { sql, params } = builder.toInsertSql(table, processedData);
-                            return await this.execute(sql, params);
+                            return await this.#executeWithConn(sql, params, conn);
                         } catch (error) {
                             Logger.error('insData 执行失败:', error);
                             throw error;
                         }
                     }
 
-                    // 更新数据 - 增强版，自动添加 updated_at，过滤敏感字段
-                    async upData(table, data, where) {
+                    // 私有方法：更新数据（支持传入连接对象）
+                    async #upDataWithConn(table, data, where, conn = null) {
                         if (!table || typeof table !== 'string') {
                             throw new Error('表名是必需的');
                         }
@@ -379,15 +335,15 @@ export default {
 
                             const builder = createQueryBuilder().where(where);
                             const { sql, params } = builder.toUpdateSql(table, updateData);
-                            return await this.execute(sql, params);
+                            return await this.#executeWithConn(sql, params, conn);
                         } catch (error) {
                             Logger.error('upData 执行失败:', error);
                             throw error;
                         }
                     }
 
-                    // 删除数据
-                    async delData(table, where) {
+                    // 私有方法：删除数据（支持传入连接对象）
+                    async #delDataWithConn(table, where, conn = null) {
                         if (!table || typeof table !== 'string') {
                             throw new Error('表名是必需的');
                         }
@@ -399,15 +355,15 @@ export default {
                         try {
                             const builder = createQueryBuilder().where(where);
                             const { sql, params } = builder.toDeleteSql(table);
-                            return await this.execute(sql, params);
+                            return await this.#executeWithConn(sql, params, conn);
                         } catch (error) {
                             Logger.error('delData 执行失败:', error);
                             throw error;
                         }
                     }
 
-                    // 批量插入 - 增强版，自动添加 ID 和时间戳
-                    async insBatch(table, dataArray) {
+                    // 私有方法：批量插入（支持传入连接对象）
+                    async #insBatchWithConn(table, dataArray, conn = null) {
                         if (!table || typeof table !== 'string') {
                             throw new Error('表名是必需的');
                         }
@@ -420,15 +376,15 @@ export default {
                             const processedDataArray = await this.#processDataForInsert(dataArray);
                             const builder = createQueryBuilder();
                             const { sql, params } = builder.toInsertSql(table, processedDataArray);
-                            return await this.execute(sql, params);
+                            return await this.#executeWithConn(sql, params, conn);
                         } catch (error) {
                             Logger.error('insBatch 执行失败:', error);
                             throw error;
                         }
                     }
 
-                    // 获取记录总数
-                    async getCount(table, options = {}) {
+                    // 私有方法：获取记录总数（支持传入连接对象）
+                    async #getCountWithConn(table, options = {}, conn = null) {
                         if (!table || typeof table !== 'string') {
                             throw new Error('表名是必需的');
                         }
@@ -451,11 +407,136 @@ export default {
                             });
 
                             const { sql, params } = builder.toCountSql();
-                            const result = await this.execute(sql, params);
+                            const result = await this.#executeWithConn(sql, params, conn);
                             return result[0]?.total || 0;
                         } catch (error) {
                             Logger.error('getCount 执行失败:', error);
                             throw error;
+                        }
+                    }
+
+                    // 执行原始 SQL - 核心方法
+                    async execute(sql, params = []) {
+                        return await this.#executeWithConn(sql, params);
+                    }
+
+                    // 获取单条记录详情
+                    async getDetail(table, options = {}) {
+                        return await this.#getDetailWithConn(table, options);
+                    }
+
+                    // 获取列表（支持分页）
+                    async getList(table, options = {}) {
+                        return await this.#getListWithConn(table, options);
+                    }
+
+                    // 获取所有记录
+                    async getAll(table, options = {}) {
+                        return await this.#getAllWithConn(table, options);
+                    }
+
+                    // 插入数据 - 增强版，自动添加 ID 和时间戳
+                    async insData(table, data) {
+                        return await this.#insDataWithConn(table, data);
+                    }
+
+                    // 更新数据 - 增强版，自动添加 updated_at，过滤敏感字段
+                    async upData(table, data, where) {
+                        return await this.#upDataWithConn(table, data, where);
+                    }
+
+                    // 删除数据
+                    async delData(table, where) {
+                        return await this.#delDataWithConn(table, where);
+                    }
+
+                    // 批量插入 - 增强版，自动添加 ID 和时间戳
+                    async insBatch(table, dataArray) {
+                        return await this.#insBatchWithConn(table, dataArray);
+                    }
+
+                    // 获取记录总数
+                    async getCount(table, options = {}) {
+                        return await this.#getCountWithConn(table, options);
+                    }
+
+                    // 事务处理
+                    async trans(callback) {
+                        if (typeof callback !== 'function') {
+                            throw new Error('事务回调函数是必需的');
+                        }
+
+                        let conn;
+                        try {
+                            conn = await this.#pool.getConnection();
+                            await conn.beginTransaction();
+
+                            // 为回调函数提供连接对象和高级方法
+                            const txMethods = {
+                                // 原始SQL执行方法
+                                query: async (sql, params = []) => {
+                                    return await conn.query(sql, params);
+                                },
+                                execute: async (sql, params = []) => {
+                                    return await conn.query(sql, params);
+                                },
+
+                                // 高级数据操作方法 - 直接调用私有方法，传入事务连接
+                                getDetail: async (table, options = {}) => {
+                                    return await this.#getDetailWithConn(table, options, conn);
+                                },
+
+                                getList: async (table, options = {}) => {
+                                    return await this.#getListWithConn(table, options, conn);
+                                },
+
+                                getAll: async (table, options = {}) => {
+                                    return await this.#getAllWithConn(table, options, conn);
+                                },
+
+                                insData: async (table, data) => {
+                                    return await this.#insDataWithConn(table, data, conn);
+                                },
+
+                                upData: async (table, data, where) => {
+                                    return await this.#upDataWithConn(table, data, where, conn);
+                                },
+
+                                delData: async (table, where) => {
+                                    return await this.#delDataWithConn(table, where, conn);
+                                },
+
+                                getCount: async (table, options = {}) => {
+                                    return await this.#getCountWithConn(table, options, conn);
+                                },
+
+                                insBatch: async (table, dataArray) => {
+                                    return await this.#insBatchWithConn(table, dataArray, conn);
+                                }
+                            };
+
+                            const result = await callback(txMethods);
+
+                            await conn.commit();
+                            return result;
+                        } catch (error) {
+                            if (conn) {
+                                try {
+                                    await conn.rollback();
+                                    Logger.info('事务已回滚');
+                                } catch (rollbackError) {
+                                    Logger.error('事务回滚失败:', rollbackError);
+                                }
+                            }
+                            throw error;
+                        } finally {
+                            if (conn) {
+                                try {
+                                    conn.release();
+                                } catch (releaseError) {
+                                    Logger.warn('连接释放警告:', releaseError.message);
+                                }
+                            }
                         }
                     }
 

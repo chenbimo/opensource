@@ -32,7 +32,9 @@ MYSQL_POOL_MAX=10
 MYSQL_DEBUG=0
 
 # 时区配置
-TIMEZONE=local
+TIMEZONE// 电商订单处理事务
+const processOrder = async (orderData) => {
+    const result = await db.trans(async (tx) => {cal
 ```
 
 ## 基本用法
@@ -404,8 +406,8 @@ const users = await db.execute(sql, params);
 ### 基础事务
 
 ```javascript
-// 简单事务
-const result = await db.transaction(async (tx) => {
+// 简单事务 - 使用原始SQL
+const result = await db.trans(async (tx) => {
     // 在事务中执行多个操作
     await tx.execute('INSERT INTO users (name, email) VALUES (?, ?)', ['John', 'john@example.com']);
     await tx.execute('UPDATE users SET status = 1 WHERE name = ?', ['John']);
@@ -414,32 +416,90 @@ const result = await db.transaction(async (tx) => {
 });
 ```
 
-### 复杂事务
+### 高级事务 - 支持所有CURD方法
+
+事务中支持所有高级数据操作方法：`getDetail`、`getList`、`getAll`、`insData`、`upData`、`delData`、`getCount`、`insBatch`
 
 ```javascript
-// 复杂事务操作
-const transferMoney = async (fromUserId, toUserId, amount) => {
-    return await db.transaction(async (tx) => {
-        // 检查余额
-        const fromUser = await tx.execute('SELECT balance FROM users WHERE id = ? FOR UPDATE', [fromUserId]);
+// 使用高级方法的事务
+const result = await db.trans(async (tx) => {
+    // 查询用户
+    const user = await tx.getDetail('users', { name: 'John' });
 
-        if (fromUser[0].balance < amount) {
-            throw new Error('余额不足');
-        }
+    if (!user) {
+        // 创建用户
+        const newUser = await tx.insData('users', {
+            name: 'John',
+            email: 'john@example.com',
+            status: 1
+        });
 
-        // 扣款
-        await tx.execute('UPDATE users SET balance = balance - ? WHERE id = ?', [amount, fromUserId]);
+        // 创建用户配置
+        await tx.insData('user_profiles', {
+            user_id: newUser.insertId,
+            avatar: 'default.png',
+            bio: '新用户'
+        });
+    } else {
+        // 更新用户信息
+        await tx.upData('users', { status: 1, last_login: new Date() }, { id: user.id });
+    }
 
-        // 加款
-        await tx.execute('UPDATE users SET balance = balance + ? WHERE id = ?', [amount, toUserId]);
-
-        // 记录转账日志
-        await tx.execute('INSERT INTO transfer_logs (from_user_id, to_user_id, amount, created_at) VALUES (?, ?, ?, ?)', [fromUserId, toUserId, amount, new Date()]);
-
-        return { success: true, transferId: result.insertId };
+    // 获取用户列表验证
+    const users = await tx.getList('users', {
+        where: { status: 1 },
+        page: 1,
+        pageSize: 10
     });
-};
+
+    return { success: true, userCount: users.total };
+});
 ```
+
+### 复杂业务事务
+
+```javascript
+// 复杂业务事务示例
+const result = await db.trans(async (tx) => {
+
+// 使用示例
+const orderData = {
+    userId: 123,
+    totalAmount: 299.99,
+    productIds: [1, 2, 3],
+    items: [
+        { productId: 1, quantity: 2, price: 99.99 },
+        { productId: 2, quantity: 1, price: 49.99 },
+        { productId: 3, quantity: 1, price: 149.99 }
+    ]
+};
+
+const result = await processOrder(orderData);
+```
+
+### 事务中支持的方法
+
+| 方法                         | 描述                  | 用法示例                                                                     |
+| ---------------------------- | --------------------- | ---------------------------------------------------------------------------- |
+| `execute(sql, params)`       | 执行原始SQL           | `await tx.execute('SELECT * FROM users WHERE id = ?', [1])`                  |
+| `query(sql, params)`         | 执行查询（同execute） | `await tx.query('INSERT INTO users (name) VALUES (?)', ['John'])`            |
+| `getDetail(table, options)`  | 获取单条记录          | `await tx.getDetail('users', { id: 1 })`                                     |
+| `getList(table, options)`    | 获取列表（支持分页）  | `await tx.getList('users', { where: { status: 1 }, page: 1, pageSize: 10 })` |
+| `getAll(table, options)`     | 获取所有记录          | `await tx.getAll('users', { where: { status: 1 } })`                         |
+| `insData(table, data)`       | 插入单条记录          | `await tx.insData('users', { name: 'John', email: 'john@example.com' })`     |
+| `upData(table, data, where)` | 更新记录              | `await tx.upData('users', { status: 1 }, { id: 1 })`                         |
+| `delData(table, where)`      | 删除记录              | `await tx.delData('users', { id: 1 })`                                       |
+| `getCount(table, options)`   | 获取记录总数          | `await tx.getCount('users', { where: { status: 1 } })`                       |
+| `insBatch(table, dataArray)` | 批量插入              | `await tx.insBatch('users', [{ name: 'John' }, { name: 'Jane' }])`           |
+
+### 事务特性
+
+- ✅ **自动回滚**：任何错误都会自动回滚事务
+- ✅ **完整CURD支持**：支持所有高级数据库操作方法
+- ✅ **一级属性where条件**：事务中的方法完全支持新的where条件格式
+- ✅ **自动ID和时间戳**：`insData` 和 `insBatch` 自动添加ID和时间戳
+- ✅ **安全的更新删除**：`upData` 和 `delData` 必须提供where条件
+- ✅ **JOIN查询支持**：`getDetail`、`getList`、`getAll` 支持leftJoin
 
 ## orderBy 排序
 
@@ -500,7 +560,7 @@ try {
 
 ```javascript
 try {
-    const result = await db.transaction(async (tx) => {
+    const result = await db.trans(async (tx) => {
         // 事务操作
         await tx.execute('INSERT INTO users (name) VALUES (?)', ['Test']);
 
@@ -573,7 +633,7 @@ const users = await db.getList('users', {
 
 ```javascript
 // ✅ 保持事务简短
-const result = await db.transaction(async (tx) => {
+const result = await db.trans(async (tx) => {
     // 只包含必要的数据库操作
     await tx.execute('INSERT INTO orders (user_id, amount) VALUES (?, ?)', [userId, amount]);
     await tx.execute('UPDATE users SET balance = balance - ? WHERE id = ?', [amount, userId]);
