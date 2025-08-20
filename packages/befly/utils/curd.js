@@ -20,11 +20,82 @@ export class SqlBuilder {
         return this;
     }
 
+    // 字段转义方法 - 处理字段名和表名的着重号转义
+    _escapeField(field) {
+        if (typeof field !== 'string') {
+            return field;
+        }
+
+        // 去除前后空格
+        field = field.trim();
+
+        // 如果是 * 或已经有着重号，直接返回
+        if (field === '*' || field.startsWith('`') || field.includes('(')) {
+            return field;
+        }
+
+        // 处理别名（AS关键字）
+        if (field.toUpperCase().includes(' AS ')) {
+            const parts = field.split(/\s+AS\s+/i);
+            const fieldPart = parts[0].trim();
+            const aliasPart = parts[1].trim();
+            return `${this._escapeField(fieldPart)} AS ${aliasPart}`;
+        }
+
+        // 处理表名.字段名的情况（多表联查）
+        if (field.includes('.')) {
+            const parts = field.split('.');
+            return parts
+                .map((part) => {
+                    part = part.trim();
+                    // 如果是 * 或已经有着重号，不再处理
+                    if (part === '*' || part.startsWith('`')) {
+                        return part;
+                    }
+                    return `\`${part}\``;
+                })
+                .join('.');
+        }
+
+        // 处理单个字段名
+        return `\`${field}\``;
+    }
+
+    // 转义表名
+    _escapeTable(table) {
+        if (typeof table !== 'string') {
+            return table;
+        }
+
+        table = table.trim();
+
+        // 如果已经有着重号，直接返回
+        if (table.startsWith('`')) {
+            return table;
+        }
+
+        // 处理表别名（表名 + 空格 + 别名）
+        if (table.includes(' ')) {
+            const parts = table.split(/\s+/);
+            if (parts.length === 2) {
+                // 只有表名和别名的情况
+                const tableName = parts[0].trim();
+                const alias = parts[1].trim();
+                return `\`${tableName}\` ${alias}`;
+            } else {
+                // 复杂情况，直接返回
+                return table;
+            }
+        }
+
+        return `\`${table}\``;
+    }
+
     select(fields = '*') {
         if (Array.isArray(fields)) {
-            this._select = [...this._select, ...fields];
+            this._select = [...this._select, ...fields.map((field) => this._escapeField(field))];
         } else if (typeof fields === 'string') {
-            this._select.push(fields);
+            this._select.push(this._escapeField(fields));
         } else {
             throw new Error('SELECT fields must be string or array');
         }
@@ -35,7 +106,7 @@ export class SqlBuilder {
         if (typeof table !== 'string' || !table.trim()) {
             throw new Error('FROM table must be a non-empty string');
         }
-        this._from = table.trim();
+        this._from = this._escapeTable(table.trim());
         return this;
     }
 
@@ -86,6 +157,7 @@ export class SqlBuilder {
                 // 一级属性格式：age$gt, role$in 等
                 const lastDollarIndex = key.lastIndexOf('$');
                 const fieldName = key.substring(0, lastDollarIndex);
+                const escapedFieldName = this._escapeField(fieldName);
                 const operator = '$' + key.substring(lastDollarIndex + 1);
 
                 this._validateParam(value);
@@ -93,13 +165,13 @@ export class SqlBuilder {
                 switch (operator) {
                     case '$ne':
                     case '$not':
-                        this._where.push(`${fieldName} != ?`);
+                        this._where.push(`${escapedFieldName} != ?`);
                         this._params.push(value);
                         break;
                     case '$in':
                         if (Array.isArray(value) && value.length > 0) {
                             const placeholders = value.map(() => '?').join(',');
-                            this._where.push(`${fieldName} IN (${placeholders})`);
+                            this._where.push(`${escapedFieldName} IN (${placeholders})`);
                             this._params.push(...value);
                         }
                         break;
@@ -107,64 +179,65 @@ export class SqlBuilder {
                     case '$notIn':
                         if (Array.isArray(value) && value.length > 0) {
                             const placeholders = value.map(() => '?').join(',');
-                            this._where.push(`${fieldName} NOT IN (${placeholders})`);
+                            this._where.push(`${escapedFieldName} NOT IN (${placeholders})`);
                             this._params.push(...value);
                         }
                         break;
                     case '$like':
-                        this._where.push(`${fieldName} LIKE ?`);
+                        this._where.push(`${escapedFieldName} LIKE ?`);
                         this._params.push(value);
                         break;
                     case '$notLike':
-                        this._where.push(`${fieldName} NOT LIKE ?`);
+                        this._where.push(`${escapedFieldName} NOT LIKE ?`);
                         this._params.push(value);
                         break;
                     case '$gt':
-                        this._where.push(`${fieldName} > ?`);
+                        this._where.push(`${escapedFieldName} > ?`);
                         this._params.push(value);
                         break;
                     case '$gte':
-                        this._where.push(`${fieldName} >= ?`);
+                        this._where.push(`${escapedFieldName} >= ?`);
                         this._params.push(value);
                         break;
                     case '$lt':
-                        this._where.push(`${fieldName} < ?`);
+                        this._where.push(`${escapedFieldName} < ?`);
                         this._params.push(value);
                         break;
                     case '$lte':
-                        this._where.push(`${fieldName} <= ?`);
+                        this._where.push(`${escapedFieldName} <= ?`);
                         this._params.push(value);
                         break;
                     case '$between':
                         if (Array.isArray(value) && value.length === 2) {
-                            this._where.push(`${fieldName} BETWEEN ? AND ?`);
+                            this._where.push(`${escapedFieldName} BETWEEN ? AND ?`);
                             this._params.push(value[0], value[1]);
                         }
                         break;
                     case '$notBetween':
                         if (Array.isArray(value) && value.length === 2) {
-                            this._where.push(`${fieldName} NOT BETWEEN ? AND ?`);
+                            this._where.push(`${escapedFieldName} NOT BETWEEN ? AND ?`);
                             this._params.push(value[0], value[1]);
                         }
                         break;
                     case '$null':
                         if (value === true) {
-                            this._where.push(`${fieldName} IS NULL`);
+                            this._where.push(`${escapedFieldName} IS NULL`);
                         }
                         break;
                     case '$notNull':
                         if (value === true) {
-                            this._where.push(`${fieldName} IS NOT NULL`);
+                            this._where.push(`${escapedFieldName} IS NOT NULL`);
                         }
                         break;
                     default:
-                        this._where.push(`${fieldName} = ?`);
+                        this._where.push(`${escapedFieldName} = ?`);
                         this._params.push(value);
                 }
             } else {
                 // 简单的等于条件
                 this._validateParam(value);
-                this._where.push(`${key} = ?`);
+                const escapedKey = this._escapeField(key);
+                this._where.push(`${escapedKey} = ?`);
                 this._params.push(value);
             }
         });
@@ -176,7 +249,8 @@ export class SqlBuilder {
             this._processWhereConditions(condition);
         } else if (value !== null) {
             this._validateParam(value);
-            this._where.push(`${condition} = ?`);
+            const escapedCondition = this._escapeField(condition);
+            this._where.push(`${escapedCondition} = ?`);
             this._params.push(value);
         } else if (typeof condition === 'string') {
             this._where.push(condition);
@@ -188,7 +262,8 @@ export class SqlBuilder {
         if (typeof table !== 'string' || typeof on !== 'string') {
             throw new Error('JOIN table and condition must be strings');
         }
-        this._joins.push(`LEFT JOIN ${table} ON ${on}`);
+        const escapedTable = this._escapeTable(table);
+        this._joins.push(`LEFT JOIN ${escapedTable} ON ${on}`);
         return this;
     }
 
@@ -214,7 +289,8 @@ export class SqlBuilder {
                 throw new Error('ORDER BY direction must be ASC or DESC');
             }
 
-            this._orderBy.push(`${cleanField} ${cleanDir}`);
+            const escapedField = this._escapeField(cleanField);
+            this._orderBy.push(`${escapedField} ${cleanDir}`);
         });
 
         return this;
@@ -222,9 +298,10 @@ export class SqlBuilder {
 
     groupBy(field) {
         if (Array.isArray(field)) {
-            this._groupBy = [...this._groupBy, ...field.filter((f) => typeof f === 'string')];
+            const escapedFields = field.filter((f) => typeof f === 'string').map((f) => this._escapeField(f));
+            this._groupBy = [...this._groupBy, ...escapedFields];
         } else if (typeof field === 'string') {
-            this._groupBy.push(field);
+            this._groupBy.push(this._escapeField(field));
         }
         return this;
     }
@@ -309,6 +386,8 @@ export class SqlBuilder {
             throw new Error('Data is required for INSERT');
         }
 
+        const escapedTable = this._escapeTable(table);
+
         if (Array.isArray(data)) {
             if (data.length === 0) {
                 throw new Error('Insert data cannot be empty');
@@ -319,10 +398,11 @@ export class SqlBuilder {
                 throw new Error('Insert data must have at least one field');
             }
 
+            const escapedFields = fields.map((field) => this._escapeField(field));
             const placeholders = fields.map(() => '?').join(', ');
             const values = data.map(() => `(${placeholders})`).join(', ');
 
-            const sql = `INSERT INTO ${table} (${fields.join(', ')}) VALUES ${values}`;
+            const sql = `INSERT INTO ${escapedTable} (${escapedFields.join(', ')}) VALUES ${values}`;
             const params = data.flatMap((row) => fields.map((field) => row[field]));
 
             return { sql, params };
@@ -332,8 +412,9 @@ export class SqlBuilder {
                 throw new Error('Insert data must have at least one field');
             }
 
+            const escapedFields = fields.map((field) => this._escapeField(field));
             const placeholders = fields.map(() => '?').join(', ');
-            const sql = `INSERT INTO ${table} (${fields.join(', ')}) VALUES (${placeholders})`;
+            const sql = `INSERT INTO ${escapedTable} (${escapedFields.join(', ')}) VALUES (${placeholders})`;
             const params = fields.map((field) => data[field]);
 
             return { sql, params };
@@ -355,10 +436,11 @@ export class SqlBuilder {
             throw new Error('Update data must have at least one field');
         }
 
-        const setFields = fields.map((field) => `${field} = ?`);
+        const escapedTable = this._escapeTable(table);
+        const setFields = fields.map((field) => `${this._escapeField(field)} = ?`);
         const params = [...Object.values(data), ...this._params];
 
-        let sql = `UPDATE ${table} SET ${setFields.join(', ')}`;
+        let sql = `UPDATE ${escapedTable} SET ${setFields.join(', ')}`;
 
         if (this._where.length > 0) {
             sql += ' WHERE ' + this._where.join(' AND ');
@@ -375,7 +457,8 @@ export class SqlBuilder {
             throw new Error('Table name is required for DELETE');
         }
 
-        let sql = `DELETE FROM ${table}`;
+        const escapedTable = this._escapeTable(table);
+        let sql = `DELETE FROM ${escapedTable}`;
 
         if (this._where.length > 0) {
             sql += ' WHERE ' + this._where.join(' AND ');

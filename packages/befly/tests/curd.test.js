@@ -36,21 +36,21 @@ describe('SELECT 查询构建测试', () => {
     test('基础 SELECT 查询', () => {
         const { sql, params } = builder.select('*').from('users').toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users');
+        expect(sql).toBe('SELECT * FROM `users`');
         expect(params).toEqual([]);
     });
 
     test('指定字段 SELECT 查询', () => {
         const { sql, params } = builder.select(['id', 'name', 'email']).from('users').toSelectSql();
 
-        expect(sql).toBe('SELECT id, name, email FROM users');
+        expect(sql).toBe('SELECT `id`, `name`, `email` FROM `users`');
         expect(params).toEqual([]);
     });
 
     test('添加多个字段', () => {
         const { sql, params } = builder.select('id').select(['name', 'email']).select('created_at').from('users').toSelectSql();
 
-        expect(sql).toBe('SELECT id, name, email, created_at FROM users');
+        expect(sql).toBe('SELECT `id`, `name`, `email`, `created_at` FROM `users`');
         expect(params).toEqual([]);
     });
 
@@ -75,7 +75,7 @@ describe('WHERE 条件测试', () => {
     test('简单等于条件', () => {
         const { sql, params } = builder.where({ name: 'John', status: 1 }).toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users WHERE name = ? AND status = ?');
+        expect(sql).toBe('SELECT * FROM `users` WHERE `name` = ? AND `status` = ?');
         expect(params).toEqual(['John', 1]);
     });
 
@@ -90,7 +90,7 @@ describe('WHERE 条件测试', () => {
             })
             .toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users WHERE age > ? AND score >= ? AND level < ? AND points <= ? AND status != ?');
+        expect(sql).toBe('SELECT * FROM `users` WHERE `age` > ? AND `score` >= ? AND `level` < ? AND `points` <= ? AND `status` != ?');
         expect(params).toEqual([18, 60, 10, 1000, 0]);
     });
 
@@ -102,7 +102,7 @@ describe('WHERE 条件测试', () => {
             })
             .toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users WHERE role IN (?,?) AND status NOT IN (?,?)');
+        expect(sql).toBe('SELECT * FROM `users` WHERE `role` IN (?,?) AND `status` NOT IN (?,?)');
         expect(params).toEqual(['admin', 'user', 0, -1]);
     });
 
@@ -114,7 +114,7 @@ describe('WHERE 条件测试', () => {
             })
             .toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users WHERE name LIKE ? AND email NOT LIKE ?');
+        expect(sql).toBe('SELECT * FROM `users` WHERE `name` LIKE ? AND `email` NOT LIKE ?');
         expect(params).toEqual(['%john%', '%@temp.com']);
     });
 
@@ -126,7 +126,7 @@ describe('WHERE 条件测试', () => {
             })
             .toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users WHERE age BETWEEN ? AND ? AND score NOT BETWEEN ? AND ?');
+        expect(sql).toBe('SELECT * FROM `users` WHERE `age` BETWEEN ? AND ? AND `score` NOT BETWEEN ? AND ?');
         expect(params).toEqual([18, 65, 0, 59]);
     });
 
@@ -138,7 +138,7 @@ describe('WHERE 条件测试', () => {
             })
             .toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users WHERE deleted_at IS NULL AND email IS NOT NULL');
+        expect(sql).toBe('SELECT * FROM `users` WHERE `deleted_at` IS NULL AND `email` IS NOT NULL');
         expect(params).toEqual([]);
     });
 
@@ -152,7 +152,7 @@ describe('WHERE 条件测试', () => {
             })
             .toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users WHERE status = ? AND age >= ? AND role IN (?,?) AND name LIKE ?');
+        expect(sql).toBe('SELECT * FROM `users` WHERE `status` = ? AND `age` >= ? AND `role` IN (?,?) AND `name` LIKE ?');
         expect(params).toEqual([1, 18, 'admin', 'user', '%john%']);
     });
 
@@ -166,21 +166,21 @@ describe('WHERE 条件测试', () => {
             })
             .toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users WHERE status = ? AND age > ? AND role IN (?,?)');
+        expect(sql).toBe('SELECT * FROM `users` WHERE `status` = ? AND `age` > ? AND `role` IN (?,?)');
         expect(params).toEqual([1, 18, 'admin', 'user']);
     });
 
     test('字符串 WHERE 条件', () => {
         const { sql, params } = builder.where('id = 1').toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users WHERE id = 1');
+        expect(sql).toBe('SELECT * FROM `users` WHERE id = 1');
         expect(params).toEqual([]);
     });
 
     test('链式 WHERE 条件', () => {
         const { sql, params } = builder.where('status', 1).where({ age$gte: 18 }).toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users WHERE status = ? AND age >= ?');
+        expect(sql).toBe('SELECT * FROM `users` WHERE `status` = ? AND `age` >= ?');
         expect(params).toEqual([1, 18]);
     });
 });
@@ -200,7 +200,7 @@ describe('OR 条件测试', () => {
             })
             .toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users WHERE status = ? AND ((role = ?) OR (level >= ?))');
+        expect(sql).toBe('SELECT * FROM `users` WHERE `status` = ? AND ((`role` = ?) OR (`level` >= ?))');
         expect(params).toEqual([1, 'admin', 5]);
     });
 
@@ -211,7 +211,7 @@ describe('OR 条件测试', () => {
             })
             .toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users WHERE ((role = ?) OR (permissions LIKE ?) OR (level >= ?))');
+        expect(sql).toBe('SELECT * FROM `users` WHERE ((`role` = ?) OR (`permissions` LIKE ?) OR (`level` >= ?))');
         expect(params).toEqual(['admin', '%manage%', 10]);
     });
 
@@ -227,7 +227,7 @@ describe('OR 条件测试', () => {
             })
             .toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users WHERE status = ? AND ((role = ?) OR (level >= ?))');
+        expect(sql).toBe('SELECT * FROM `users` WHERE `status` = ? AND ((`role` = ?) OR (`level` >= ?))');
         expect(params).toEqual([1, 'admin', 5]);
     });
 });
@@ -242,21 +242,21 @@ describe('JOIN 操作测试', () => {
     test('单个 LEFT JOIN', () => {
         const { sql, params } = builder.leftJoin('user_profiles up', 'u.id = up.user_id').toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users u LEFT JOIN user_profiles up ON u.id = up.user_id');
+        expect(sql).toBe('SELECT * FROM `users` u LEFT JOIN `user_profiles` up ON u.id = up.user_id');
         expect(params).toEqual([]);
     });
 
     test('多个 LEFT JOIN', () => {
         const { sql, params } = builder.leftJoin('user_profiles up', 'u.id = up.user_id').leftJoin('posts p', 'u.id = p.user_id').leftJoin('categories c', 'p.category_id = c.id').toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users u LEFT JOIN user_profiles up ON u.id = up.user_id LEFT JOIN posts p ON u.id = p.user_id LEFT JOIN categories c ON p.category_id = c.id');
+        expect(sql).toBe('SELECT * FROM `users` u LEFT JOIN `user_profiles` up ON u.id = up.user_id LEFT JOIN `posts` p ON u.id = p.user_id LEFT JOIN `categories` c ON p.category_id = c.id');
         expect(params).toEqual([]);
     });
 
     test('JOIN 带 WHERE 条件', () => {
         const { sql, params } = builder.leftJoin('user_profiles up', 'u.id = up.user_id').where({ 'u.status': 1, 'up.verified': true }).toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users u LEFT JOIN user_profiles up ON u.id = up.user_id WHERE u.status = ? AND up.verified = ?');
+        expect(sql).toBe('SELECT * FROM `users` u LEFT JOIN `user_profiles` up ON u.id = up.user_id WHERE `u`.`status` = ? AND `up`.`verified` = ?');
         expect(params).toEqual([1, true]);
     });
 });
@@ -271,14 +271,14 @@ describe('ORDER BY 测试', () => {
     test('一维数组格式排序', () => {
         const { sql, params } = builder.orderBy(['created_at#DESC', 'name#ASC', 'id#DESC']).toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users ORDER BY created_at DESC, name ASC, id DESC');
+        expect(sql).toBe('SELECT * FROM `users` ORDER BY `created_at` DESC, `name` ASC, `id` DESC');
         expect(params).toEqual([]);
     });
 
     test('单个字段排序', () => {
         const { sql, params } = builder.orderBy(['name#ASC']).toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users ORDER BY name ASC');
+        expect(sql).toBe('SELECT * FROM `users` ORDER BY `name` ASC');
         expect(params).toEqual([]);
     });
 
@@ -309,7 +309,7 @@ describe('ORDER BY 测试', () => {
     test('大小写不敏感', () => {
         const { sql, params } = builder.orderBy(['name#asc', 'id#desc']).toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users ORDER BY name ASC, id DESC');
+        expect(sql).toBe('SELECT * FROM `users` ORDER BY `name` ASC, `id` DESC');
         expect(params).toEqual([]);
     });
 });
@@ -324,28 +324,28 @@ describe('GROUP BY 和 HAVING 测试', () => {
     test('GROUP BY 单个字段', () => {
         const { sql, params } = builder.groupBy('role').toSelectSql();
 
-        expect(sql).toBe('SELECT role, COUNT(*) as count FROM users GROUP BY role');
+        expect(sql).toBe('SELECT `role`, COUNT(*) as count FROM `users` GROUP BY `role`');
         expect(params).toEqual([]);
     });
 
     test('GROUP BY 多个字段', () => {
         const { sql, params } = builder.groupBy(['role', 'department']).toSelectSql();
 
-        expect(sql).toBe('SELECT role, COUNT(*) as count FROM users GROUP BY role, department');
+        expect(sql).toBe('SELECT `role`, COUNT(*) as count FROM `users` GROUP BY `role`, `department`');
         expect(params).toEqual([]);
     });
 
     test('GROUP BY 和 HAVING', () => {
         const { sql, params } = builder.groupBy('role').having('COUNT(*) > 5').toSelectSql();
 
-        expect(sql).toBe('SELECT role, COUNT(*) as count FROM users GROUP BY role HAVING COUNT(*) > 5');
+        expect(sql).toBe('SELECT `role`, COUNT(*) as count FROM `users` GROUP BY `role` HAVING COUNT(*) > 5');
         expect(params).toEqual([]);
     });
 
     test('多个 HAVING 条件', () => {
         const { sql, params } = builder.groupBy('role').having('COUNT(*) > 5').having('AVG(age) < 40').toSelectSql();
 
-        expect(sql).toBe('SELECT role, COUNT(*) as count FROM users GROUP BY role HAVING COUNT(*) > 5 AND AVG(age) < 40');
+        expect(sql).toBe('SELECT `role`, COUNT(*) as count FROM `users` GROUP BY `role` HAVING COUNT(*) > 5 AND AVG(age) < 40');
         expect(params).toEqual([]);
     });
 });
@@ -360,21 +360,21 @@ describe('LIMIT 和 OFFSET 测试', () => {
     test('仅 LIMIT', () => {
         const { sql, params } = builder.limit(10).toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users LIMIT 10');
+        expect(sql).toBe('SELECT * FROM `users` LIMIT 10');
         expect(params).toEqual([]);
     });
 
     test('LIMIT 和 OFFSET', () => {
         const { sql, params } = builder.limit(10, 20).toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users LIMIT 10 OFFSET 20');
+        expect(sql).toBe('SELECT * FROM `users` LIMIT 10 OFFSET 20');
         expect(params).toEqual([]);
     });
 
     test('单独设置 OFFSET', () => {
         const { sql, params } = builder.limit(10).offset(30).toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users LIMIT 10 OFFSET 30');
+        expect(sql).toBe('SELECT * FROM `users` LIMIT 10 OFFSET 30');
         expect(params).toEqual([]);
     });
 
@@ -413,7 +413,7 @@ describe('复杂查询组合测试', () => {
             .limit(50)
             .toSelectSql();
 
-        const expectedSql = 'SELECT u.id, u.name, u.email, up.avatar, COUNT(p.id) as post_count FROM users u ' + 'LEFT JOIN user_profiles up ON u.id = up.user_id ' + 'LEFT JOIN posts p ON u.id = p.user_id AND p.status = 1 ' + 'WHERE u.status = ? AND u.created_at >= ? AND u.role IN (?,?) ' + 'GROUP BY u.id ' + 'HAVING COUNT(p.id) > 0 ' + 'ORDER BY u.created_at DESC, u.name ASC ' + 'LIMIT 50';
+        const expectedSql = 'SELECT `u`.`id`, `u`.`name`, `u`.`email`, `up`.`avatar`, COUNT(p.id) as post_count FROM `users` u ' + 'LEFT JOIN `user_profiles` up ON u.id = up.user_id ' + 'LEFT JOIN `posts` p ON u.id = p.user_id AND p.status = 1 ' + 'WHERE `u`.`status` = ? AND `u`.`created_at` >= ? AND `u`.`role` IN (?,?) ' + 'GROUP BY `u`.`id` ' + 'HAVING COUNT(p.id) > 0 ' + 'ORDER BY `u`.`created_at` DESC, `u`.`name` ASC ' + 'LIMIT 50';
 
         expect(sql).toBe(expectedSql);
         expect(params).toEqual([1, '2024-01-01', 'admin', 'user']);
@@ -431,7 +431,7 @@ describe('INSERT 查询构建测试', () => {
         const data = { name: 'John', email: 'john@example.com', age: 25 };
         const { sql, params } = builder.toInsertSql('users', data);
 
-        expect(sql).toBe('INSERT INTO users (name, email, age) VALUES (?, ?, ?)');
+        expect(sql).toBe('INSERT INTO `users` (`name`, `email`, `age`) VALUES (?, ?, ?)');
         expect(params).toEqual(['John', 'john@example.com', 25]);
     });
 
@@ -443,7 +443,7 @@ describe('INSERT 查询构建测试', () => {
         ];
         const { sql, params } = builder.toInsertSql('users', data);
 
-        expect(sql).toBe('INSERT INTO users (name, email) VALUES (?, ?), (?, ?), (?, ?)');
+        expect(sql).toBe('INSERT INTO `users` (`name`, `email`) VALUES (?, ?), (?, ?), (?, ?)');
         expect(params).toEqual(['John', 'john@example.com', 'Jane', 'jane@example.com', 'Bob', 'bob@example.com']);
     });
 
@@ -475,7 +475,7 @@ describe('UPDATE 查询构建测试', () => {
         const data = { name: 'Updated Name', email: 'updated@example.com' };
         const { sql, params } = builder.where({ id: 1 }).toUpdateSql('users', data);
 
-        expect(sql).toBe('UPDATE users SET name = ?, email = ? WHERE id = ?');
+        expect(sql).toBe('UPDATE `users` SET `name` = ?, `email` = ? WHERE `id` = ?');
         expect(params).toEqual(['Updated Name', 'updated@example.com', 1]);
     });
 
@@ -483,7 +483,7 @@ describe('UPDATE 查询构建测试', () => {
         const data = { status: 1, updated_at: new Date('2024-01-01') };
         const { sql, params } = builder.where({ age$gte: 18, role$in: ['user', 'admin'] }).toUpdateSql('users', data);
 
-        expect(sql).toBe('UPDATE users SET status = ?, updated_at = ? WHERE age >= ? AND role IN (?,?)');
+        expect(sql).toBe('UPDATE `users` SET `status` = ?, `updated_at` = ? WHERE `age` >= ? AND `role` IN (?,?)');
         expect(params).toEqual([1, new Date('2024-01-01'), 18, 'user', 'admin']);
     });
 
@@ -510,14 +510,14 @@ describe('DELETE 查询构建测试', () => {
     test('基础删除', () => {
         const { sql, params } = builder.where({ id: 1 }).toDeleteSql('users');
 
-        expect(sql).toBe('DELETE FROM users WHERE id = ?');
+        expect(sql).toBe('DELETE FROM `users` WHERE `id` = ?');
         expect(params).toEqual([1]);
     });
 
     test('复杂条件删除', () => {
         const { sql, params } = builder.where({ status$in: [0, -1], created_at$lt: '2023-01-01' }).toDeleteSql('users');
 
-        expect(sql).toBe('DELETE FROM users WHERE status IN (?,?) AND created_at < ?');
+        expect(sql).toBe('DELETE FROM `users` WHERE `status` IN (?,?) AND `created_at` < ?');
         expect(params).toEqual([0, -1, '2023-01-01']);
     });
 
@@ -538,14 +538,14 @@ describe('COUNT 查询构建测试', () => {
     test('基础计数', () => {
         const { sql, params } = builder.from('users').where({ status: 1 }).toCountSql();
 
-        expect(sql).toBe('SELECT COUNT(*) as total FROM users WHERE status = ?');
+        expect(sql).toBe('SELECT COUNT(*) as total FROM `users` WHERE `status` = ?');
         expect(params).toEqual([1]);
     });
 
     test('带 JOIN 的计数', () => {
         const { sql, params } = builder.from('users u').leftJoin('user_profiles up', 'u.id = up.user_id').where({ 'u.status': 1, 'up.verified': true }).toCountSql();
 
-        expect(sql).toBe('SELECT COUNT(*) as total FROM users u LEFT JOIN user_profiles up ON u.id = up.user_id WHERE u.status = ? AND up.verified = ?');
+        expect(sql).toBe('SELECT COUNT(*) as total FROM `users` u LEFT JOIN `user_profiles` up ON u.id = up.user_id WHERE `u`.`status` = ? AND `up`.`verified` = ?');
         expect(params).toEqual([1, true]);
     });
 
@@ -567,14 +567,14 @@ describe('参数验证测试', () => {
         // 当在对象形式的where条件中使用undefined时，会被忽略
         const { sql, params } = builder.select('*').from('users').where({ name: undefined, status: 1 }).toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users WHERE status = ?');
+        expect(sql).toBe('SELECT * FROM `users` WHERE `status` = ?');
         expect(params).toEqual([1]);
     });
 
     test('字段验证', () => {
         // 空数组select应该正常工作，会使用默认的*
         const { sql } = builder.select([]).from('users').toSelectSql();
-        expect(sql).toBe('SELECT * FROM users');
+        expect(sql).toBe('SELECT * FROM `users`');
     });
 
     test('表名验证', () => {
@@ -623,7 +623,7 @@ describe('边界条件和错误处理测试', () => {
         const { sql, params } = builder.select('*').from('users').where({ role$in: [] }).toSelectSql();
 
         // 空数组应该被忽略
-        expect(sql).toBe('SELECT * FROM users');
+        expect(sql).toBe('SELECT * FROM `users`');
         expect(params).toEqual([]);
     });
 
@@ -635,7 +635,7 @@ describe('边界条件和错误处理测试', () => {
             .toSelectSql();
 
         // 无效的 BETWEEN 应该被忽略
-        expect(sql).toBe('SELECT * FROM users');
+        expect(sql).toBe('SELECT * FROM `users`');
         expect(params).toEqual([]);
     });
 
@@ -643,7 +643,7 @@ describe('边界条件和错误处理测试', () => {
         const { sql, params } = builder.select('*').from('users').where({ deleted_at$null: 'not_boolean' }).toSelectSql();
 
         // 非布尔值的 NULL 检查应该被忽略
-        expect(sql).toBe('SELECT * FROM users');
+        expect(sql).toBe('SELECT * FROM `users`');
         expect(params).toEqual([]);
     });
 
@@ -659,7 +659,7 @@ describe('边界条件和错误处理测试', () => {
             })
             .toSelectSql();
 
-        expect(sql).toBe('SELECT * FROM users WHERE status = ? AND age > ?');
+        expect(sql).toBe('SELECT * FROM `users` WHERE `status` = ? AND `age` > ?');
         expect(params).toEqual([1, 18]);
     });
 });
@@ -683,7 +683,7 @@ describe('链式调用测试', () => {
     test('长链式调用', () => {
         const { sql, params } = createQueryBuilder().select(['u.*', 'p.title']).from('users u').leftJoin('posts p', 'u.id = p.user_id').where({ 'u.status': 1 }).where({ 'p.published': true }).orderBy(['u.created_at#DESC']).limit(20).toSelectSql();
 
-        expect(sql).toBe('SELECT u.*, p.title FROM users u LEFT JOIN posts p ON u.id = p.user_id WHERE u.status = ? AND p.published = ? ORDER BY u.created_at DESC LIMIT 20');
+        expect(sql).toBe('SELECT `u`.*, `p`.`title` FROM `users` u LEFT JOIN `posts` p ON u.id = p.user_id WHERE `u`.`status` = ? AND `p`.`published` = ? ORDER BY `u`.`created_at` DESC LIMIT 20');
         expect(params).toEqual([1, true]);
     });
 });

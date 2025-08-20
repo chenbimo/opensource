@@ -7,12 +7,14 @@
 - ✅ 基于 MariaDB 原生 Promise API
 - ✅ 支持链式 SQL 构造器
 - ✅ 防 SQL 注入（参数化查询）
+- ✅ **字段和表名自动转义（反引号保护）**
 - ✅ 支持事务操作
 - ✅ 支持连接池管理
 - ✅ 支持 leftJoin 关联查询
 - ✅ 支持高级 where 条件（$in, $like, $gt 等）
 - ✅ 支持分页查询
 - ✅ 完善的错误处理
+- ✅ 状态字段自动管理（软删除）
 
 ## 环境配置
 
@@ -48,6 +50,141 @@ export default async function userApi(befly) {
     // 数据库实例现在可用
 }
 ```
+
+## 字段和表名自动转义
+
+### 安全性保障
+
+本库自动为所有字段名和表名添加反引号（`）转义，防止SQL注入和关键字冲突：
+
+```javascript
+// 用户输入
+const users = await db.getList('users', {
+    where: { name: 'John', user_id: 123 },
+    fields: ['id', 'name', 'email']
+});
+
+// 自动生成的安全SQL
+// SELECT `id`, `name`, `email` FROM `users` WHERE `name` = ? AND `user_id` = ?
+```
+
+### 转义规则
+
+#### 字段名转义
+
+```javascript
+// 普通字段名
+'name' → '`name`'
+'user_id' → '`user_id`'
+'created_at' → '`created_at`'
+
+// 表.字段格式（多表联查）
+'users.name' → '`users`.`name`'
+'orders.user_id' → '`orders`.`user_id`'
+
+// 别名支持
+'name AS user_name' → '`name` AS user_name'
+'users.name AS user_name' → '`users`.`name` AS user_name'
+
+// 通配符保持不变
+'*' → '*'
+'users.*' → '`users`.*'
+
+// 函数调用保持不变
+'COUNT(*)' → 'COUNT(*)'
+'MAX(price)' → 'MAX(price)'
+'CONCAT(first_name, last_name)' → 'CONCAT(first_name, last_name)'
+
+// 已有反引号保持不变
+'`name`' → '`name`'
+'`users`.`name`' → '`users`.`name`'
+```
+
+#### 表名转义
+
+```javascript
+// 普通表名
+'users' → '`users`'
+'user_orders' → '`user_orders`'
+
+// 表别名支持
+'users u' → '`users` u'
+'user_orders uo' → '`user_orders` uo'
+
+// 已有反引号保持不变
+'`users`' → '`users`'
+'`users` u' → '`users` u'
+```
+
+### 实际应用示例
+
+#### 防止关键字冲突
+
+```javascript
+// 当字段名是MySQL关键字时，自动转义保护
+const result = await db.getList('orders', {
+    where: {
+        order: 'pending', // order 是关键字，自动转义为 `order`
+        group: 'vip', // group 是关键字，自动转义为 `group`
+        select: 'premium' // select 是关键字，自动转义为 `select`
+    },
+    fields: ['id', 'order', 'group', 'select']
+});
+
+// 生成的安全SQL：
+// SELECT `id`, `order`, `group`, `select` FROM `orders`
+// WHERE `order` = ? AND `group` = ? AND `select` = ?
+```
+
+#### 多表联查转义
+
+```javascript
+const result = await db.getList('users u', {
+    where: {
+        'u.status': 1,
+        'p.published': true,
+        'c.name': 'Technology'
+    },
+    fields: ['u.id', 'u.name', 'p.title', 'c.name as category'],
+    leftJoins: ['posts p ON u.id = p.user_id', 'categories c ON p.category_id = c.id'],
+    orderBy: ['u.created_at#DESC', 'p.updated_at#DESC']
+});
+
+// 生成的安全SQL：
+// SELECT `u`.`id`, `u`.`name`, `p`.`title`, `c`.`name` as category
+// FROM `users` u
+// LEFT JOIN `posts` p ON u.id = p.user_id
+// LEFT JOIN `categories` c ON p.category_id = c.id
+// WHERE `u`.`status` = ? AND `p`.`published` = ? AND `c`.`name` = ?
+// ORDER BY `u`.`created_at` DESC, `p`.`updated_at` DESC
+```
+
+#### 特殊字符和中文字段
+
+```javascript
+// 支持包含特殊字符或中文的字段名
+const result = await db.getList('products', {
+    where: {
+        'product-name': 'iPhone', // 包含连字符
+        用户名: 'John', // 中文字段名
+        field_with_underscore: 'value' // 下划线字段
+    },
+    fields: ['id', 'product-name', '用户名', 'field_with_underscore']
+});
+
+// 自动转义为安全格式：
+// SELECT `id`, `product-name`, `用户名`, `field_with_underscore`
+// FROM `products`
+// WHERE `product-name` = ? AND `用户名` = ? AND `field_with_underscore` = ?
+```
+
+### 兼容性说明
+
+- ✅ **向后兼容**：所有现有查询代码无需修改，自动享受转义保护
+- ✅ **智能识别**：自动识别函数、通配符、已转义字段，不会重复处理
+- ✅ **性能优化**：转义处理在查询构建阶段完成，不影响执行性能
+- ✅ **多表支持**：完美支持多表联查的字段转义
+- ✅ **别名友好**：正确处理字段和表的别名
 
 ### 2. 简单查询
 
