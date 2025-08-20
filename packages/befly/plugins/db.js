@@ -87,7 +87,7 @@ export default {
                                 data.map(async (item) => ({
                                     ...item,
                                     id: await befly.redis.genTimeID(),
-                                    state: item.state !== undefined ? item.state : 0,
+                                    state: 0,
                                     created_at: now,
                                     updated_at: now
                                 }))
@@ -96,7 +96,7 @@ export default {
                             return {
                                 ...data,
                                 id: await befly.redis.genTimeID(),
-                                state: data.state !== undefined ? data.state : 0,
+                                state: 0,
                                 created_at: now,
                                 updated_at: now
                             };
