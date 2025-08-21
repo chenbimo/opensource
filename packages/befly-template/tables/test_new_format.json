@@ -1,0 +1,7 @@
+{
+    "name": "姓名|string|2|50|null|张三|1",
+    "age": "年龄|number|0|150|null|18|0",
+    "email": "邮箱|string|5|100|^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$|null|1",
+    "status": "状态|string|1|20|^(active|inactive|pending)$|active|1",
+    "description": "描述|text|0|null|null|null|0"
+}

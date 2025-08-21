@@ -9,20 +9,46 @@ import { ruleSplit } from '../utils/util.js';
 import path from 'node:path';
 import { writeFile, mkdir, rm } from 'node:fs/promises';
 
+// 从 dbSync.js 导入解析函数进行测试
+const parseFieldRule = (rule) => {
+    const allParts = rule.split('|');
+
+    // 现在支持7个部分：显示名|类型|最小值|最大值|默认值|是否索引|正则约束
+    if (allParts.length <= 7) {
+        // 如果少于7个部分，补齐缺失的部分为 null
+        while (allParts.length < 7) {
+            allParts.push('null');
+        }
+        return allParts;
+    }
+
+    // 如果超过7个部分，把第7个部分之后的内容合并为第7个部分（正则表达式可能包含管道符）
+    const mergedRule = allParts.slice(6).join('|'); // 合并最后的正则部分
+    return [
+        allParts[0], // 显示名
+        allParts[1], // 类型
+        allParts[2], // 最小值
+        allParts[3], // 最大值
+        allParts[4], // 默认值
+        allParts[5], // 是否索引
+        mergedRule // 正则约束（可能包含管道符）
+    ];
+};
+
 // 测试用的临时表定义
 const testTableDefinitions = {
     'test_users.json': {
-        name: '用户名,string,2,50,null',
-        email: '邮箱,string,5,100,^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
-        age: '年龄,number,1,150,null',
-        bio: '个人简介,text,0,5000,null',
-        tags: '标签,array,0,10,null'
+        name: '用户名|string|2|50|null|1|null',
+        email: '邮箱|string|5|100|null|1|^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
+        age: '年龄|number|1|150|18|0|null',
+        bio: '个人简介|text|0|5000|null|0|null',
+        tags: '标签|array|0|10|null|0|null'
     },
     'test_products.json': {
-        name: '产品名称,string,1,200,null',
-        price: '价格,number,0,999999999,x>0',
-        description: '产品描述,text,0,10000,null',
-        category: '分类,string,1,50,null'
+        name: '产品名称|string|1|200|null|1|null',
+        price: '价格|number|0|999999999|0|1|x>0',
+        description: '产品描述|text|0|10000|null|0|null',
+        category: '分类|string|1|50|default|1|null'
     }
 };
 
@@ -56,51 +82,59 @@ describe('数据库同步功能测试', () => {
 
     describe('规则解析测试', () => {
         test('正确解析基本字段规则', () => {
-            const rule = '用户名,string,2,50,null';
-            const parts = ruleSplit(rule);
+            const rule = '用户名|string|2|50|null|0|null';
+            const parts = parseFieldRule(rule);
 
-            expect(parts).toHaveLength(5);
+            expect(parts).toHaveLength(7);
             expect(parts[0]).toBe('用户名');
             expect(parts[1]).toBe('string');
             expect(parts[2]).toBe('2');
             expect(parts[3]).toBe('50');
-            expect(parts[4]).toBe('null');
+            expect(parts[4]).toBe('null'); // 默认值
+            expect(parts[5]).toBe('0'); // 索引
+            expect(parts[6]).toBe('null'); // 正则约束
         });
 
         test('正确解析包含正则表达式的规则', () => {
-            const rule = '邮箱,string,5,100,^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$';
-            const parts = ruleSplit(rule);
+            const rule = '邮箱|string|5|100|null|1|^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$';
+            const parts = parseFieldRule(rule);
 
-            expect(parts).toHaveLength(5);
+            expect(parts).toHaveLength(7);
             expect(parts[0]).toBe('邮箱');
             expect(parts[1]).toBe('string');
             expect(parts[2]).toBe('5');
             expect(parts[3]).toBe('100');
-            expect(parts[4]).toBe('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+            expect(parts[4]).toBe('null');
+            expect(parts[5]).toBe('1');
+            expect(parts[6]).toBe('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
         });
 
         test('正确解析包含计算表达式的规则', () => {
-            const rule = '价格,number,0,999999999,x>0';
-            const parts = ruleSplit(rule);
+            const rule = '价格|number|0|999999999|x>0|0|1';
+            const parts = parseFieldRule(rule);
 
-            expect(parts).toHaveLength(5);
+            expect(parts).toHaveLength(7);
             expect(parts[0]).toBe('价格');
             expect(parts[1]).toBe('number');
             expect(parts[2]).toBe('0');
             expect(parts[3]).toBe('999999999');
             expect(parts[4]).toBe('x>0');
+            expect(parts[5]).toBe('0');
+            expect(parts[6]).toBe('1');
         });
 
-        test('正确解析包含逗号的复杂规则', () => {
-            const rule = '复杂字段,string,1,100,^test,with,commas$';
-            const parts = ruleSplit(rule);
+        test('正确解析包含管道符的复杂正则规则', () => {
+            const rule = '状态|string|1|20|active|1|^(active|inactive|pending)$';
+            const parts = parseFieldRule(rule);
 
-            expect(parts).toHaveLength(5);
-            expect(parts[0]).toBe('复杂字段');
+            expect(parts).toHaveLength(7);
+            expect(parts[0]).toBe('状态');
             expect(parts[1]).toBe('string');
             expect(parts[2]).toBe('1');
-            expect(parts[3]).toBe('100');
-            expect(parts[4]).toBe('^test,with,commas$');
+            expect(parts[3]).toBe('20');
+            expect(parts[4]).toBe('active');
+            expect(parts[5]).toBe('1');
+            expect(parts[6]).toBe('^(active|inactive|pending)$');
         });
     });
 

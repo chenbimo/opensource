@@ -40,13 +40,26 @@ loadEnvFile();
 const parseFieldRule = (rule) => {
     const allParts = rule.split('|');
 
-    // 如果部分数量小于等于5，直接返回
-    if (allParts.length <= 5) {
+    // 现在支持7个部分：显示名|类型|最小值|最大值|默认值|是否索引|正则约束
+    if (allParts.length <= 7) {
+        // 如果少于7个部分，补齐缺失的部分为 null
+        while (allParts.length < 7) {
+            allParts.push('null');
+        }
         return allParts;
     }
 
-    // 只取前4个部分，剩余的都合并为第5个部分
-    return [allParts[0], allParts[1], allParts[2], allParts[3], allParts.slice(4).join('|')];
+    // 如果超过7个部分，把第7个部分之后的内容合并为第7个部分（正则表达式可能包含管道符）
+    const mergedRule = allParts.slice(6).join('|'); // 合并最后的正则部分
+    return [
+        allParts[0], // 显示名
+        allParts[1], // 类型
+        allParts[2], // 最小值
+        allParts[3], // 最大值
+        allParts[4], // 默认值
+        allParts[5], // 是否索引
+        mergedRule // 正则约束（可能包含管道符）
+    ];
 };
 
 // 数据类型映射到数据库字段类型
@@ -58,14 +71,14 @@ const typeMapping = {
 };
 
 // 获取字段的SQL定义
-const getColumnDefinition = (fieldName, rule) => {
+const getColumnDefinition = (fieldName, rule, withoutIndex = false) => {
     const ruleParts = parseFieldRule(rule);
 
-    if (ruleParts.length !== 5) {
-        throw new Error(`字段 ${fieldName} 规则格式错误，期望5个部分，实际得到${ruleParts.length}个部分: [${ruleParts.join(', ')}]`);
+    if (ruleParts.length !== 7) {
+        throw new Error(`字段 ${fieldName} 规则格式错误，期望7个部分，实际得到${ruleParts.length}个部分: [${ruleParts.join(', ')}]`);
     }
 
-    const [displayName, type, minStr, maxStr, spec] = ruleParts;
+    const [displayName, type, minStr, maxStr, defaultValue, hasIndex, spec] = ruleParts;
 
     let sqlType = typeMapping[type];
     if (!sqlType) {
@@ -90,6 +103,24 @@ const getColumnDefinition = (fieldName, rule) => {
 
     // 构建完整的列定义
     let columnDef = `\`${fieldName}\` ${sqlType}`;
+
+    // 添加默认值
+    if (defaultValue && defaultValue !== 'null') {
+        if (type === 'string' || type === 'text') {
+            columnDef += ` DEFAULT "${defaultValue.replace(/"/g, '\\"')}"`;
+        } else if (type === 'number') {
+            columnDef += ` DEFAULT ${defaultValue}`;
+        } else if (type === 'array') {
+            columnDef += ` DEFAULT "${defaultValue.replace(/"/g, '\\"')}"`;
+        }
+    } else {
+        // 根据字段类型设置合适的默认值
+        if (type === 'string' || type === 'text' || type === 'array') {
+            columnDef += ` DEFAULT NULL`;
+        } else if (type === 'number') {
+            columnDef += ` DEFAULT NULL`;
+        }
+    }
 
     // 添加注释
     if (displayName && displayName !== 'null') {
@@ -172,9 +203,57 @@ const getTableColumns = async (conn, tableName) => {
     return columns;
 };
 
+// 获取表的现有索引信息
+const getTableIndexes = async (conn, tableName) => {
+    const result = await conn.query(
+        `SELECT DISTINCT INDEX_NAME, COLUMN_NAME
+         FROM information_schema.STATISTICS
+         WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND INDEX_NAME != 'PRIMARY'
+         ORDER BY INDEX_NAME, SEQ_IN_INDEX`,
+        [Env.MYSQL_DB || 'test', tableName]
+    );
+
+    const indexes = {};
+    result.forEach((row) => {
+        if (!indexes[row.INDEX_NAME]) {
+            indexes[row.INDEX_NAME] = [];
+        }
+        indexes[row.INDEX_NAME].push(row.COLUMN_NAME);
+    });
+    return indexes;
+};
+
+// 创建索引
+const createIndex = async (conn, tableName, fieldName, dbInfo) => {
+    const indexName = `idx_${fieldName}`;
+    const createIndexSQL = `CREATE INDEX \`${indexName}\` ON \`${tableName}\` (\`${fieldName}\`)`;
+
+    try {
+        await conn.query(createIndexSQL);
+        Logger.info(`表 ${tableName} 字段 ${fieldName} 索引创建成功`);
+    } catch (error) {
+        Logger.error(`创建索引失败: ${error.message}`);
+        throw error;
+    }
+};
+
+// 删除索引
+const dropIndex = async (conn, tableName, indexName) => {
+    const dropIndexSQL = `DROP INDEX \`${indexName}\` ON \`${tableName}\``;
+
+    try {
+        await conn.query(dropIndexSQL);
+        Logger.info(`表 ${tableName} 索引 ${indexName} 删除成功`);
+    } catch (error) {
+        Logger.error(`删除索引失败: ${error.message}`);
+        throw error;
+    }
+};
+
 // 创建表
 const createTable = async (conn, tableName, fields) => {
     const columns = [];
+    const indexes = [];
 
     // 添加系统默认字段
     columns.push('`id` BIGINT PRIMARY KEY COMMENT "主键ID"');
@@ -183,11 +262,25 @@ const createTable = async (conn, tableName, fields) => {
     columns.push('`deleted_at` BIGINT DEFAULT NULL COMMENT "删除时间"');
     columns.push('`state` INT DEFAULT 0 COMMENT "状态字段"');
 
+    // 添加系统字段的索引
+    indexes.push('INDEX `idx_created_at` (`created_at`)');
+    indexes.push('INDEX `idx_updated_at` (`updated_at`)');
+    indexes.push('INDEX `idx_state` (`state`)');
+
     // 添加自定义字段
     for (const [fieldName, rule] of Object.entries(fields)) {
         try {
             const columnDef = getColumnDefinition(fieldName, rule);
             columns.push(columnDef);
+
+            // 检查是否需要创建索引
+            const ruleParts = parseFieldRule(rule);
+            const hasIndex = ruleParts[5]; // 第6个参数是索引设置
+
+            if (hasIndex && hasIndex !== 'null' && hasIndex !== '0' && hasIndex.toLowerCase() !== 'false') {
+                indexes.push(`INDEX \`idx_${fieldName}\` (\`${fieldName}\`)`);
+                console.log(`📊 为字段 ${tableName}.${fieldName} 创建索引`);
+            }
         } catch (error) {
             Logger.error(`处理字段 ${fieldName} 时出错:`, error.message);
             console.error(`字段 ${fieldName} 的规则: ${rule}`);
@@ -199,9 +292,7 @@ const createTable = async (conn, tableName, fields) => {
     const createTableSQL = `
         CREATE TABLE \`${tableName}\` (
             ${columns.join(',\n            ')},
-            INDEX \`idx_created_at\` (\`created_at\`),
-            INDEX \`idx_updated_at\` (\`updated_at\`),
-            INDEX \`idx_state\` (\`state\`)
+            ${indexes.join(',\n            ')}
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT="${tableName} 表"
     `;
 
@@ -212,11 +303,11 @@ const createTable = async (conn, tableName, fields) => {
 // 比较字段定义是否有变化
 const compareFieldDefinition = (existingColumn, newRule) => {
     const ruleParts = parseFieldRule(newRule);
-    if (ruleParts.length !== 5) {
+    if (ruleParts.length !== 7) {
         return { hasChanges: false, reason: '规则格式错误' };
     }
 
-    const [displayName, type, minStr, maxStr, spec] = ruleParts;
+    const [displayName, type, minStr, maxStr, defaultValue, hasIndex, spec] = ruleParts;
     const changes = [];
 
     // 检查数据类型变化
@@ -249,6 +340,28 @@ const compareFieldDefinition = (existingColumn, newRule) => {
                 current: currentComment,
                 new: displayName,
                 field: 'COLUMN_COMMENT'
+            });
+        }
+    }
+
+    // 检查默认值变化
+    if (defaultValue && defaultValue !== 'null') {
+        const currentDefault = existingColumn.defaultValue;
+        let expectedDefault = defaultValue;
+
+        // 根据类型格式化期望的默认值
+        if (type === 'string' || type === 'text' || type === 'array') {
+            expectedDefault = defaultValue;
+        } else if (type === 'number') {
+            expectedDefault = parseInt(defaultValue);
+        }
+
+        if (currentDefault !== expectedDefault) {
+            changes.push({
+                type: 'default',
+                current: currentDefault,
+                new: expectedDefault,
+                field: 'COLUMN_DEFAULT'
             });
         }
     }
@@ -407,6 +520,14 @@ const syncTableFields = async (conn, tableName, fields, dbInfo) => {
                 // 安全执行DDL
                 await executeDDLSafely(conn, onlineSQL, dbInfo.supportsOnlineDDL ? null : fallbackSQL);
                 Logger.info(`表 ${tableName} 添加字段 ${fieldName} 成功`);
+
+                // 检查新字段是否需要创建索引
+                const ruleParts = parseFieldRule(rule);
+                const hasIndex = ruleParts[5]; // 第6个参数是索引设置
+
+                if (hasIndex && hasIndex !== 'null' && hasIndex !== '0' && hasIndex.toLowerCase() !== 'false') {
+                    await createIndex(conn, tableName, fieldName, dbInfo);
+                }
             }
         } catch (error) {
             Logger.error(`同步字段 ${fieldName} 时出错:`, error.message);
@@ -414,7 +535,73 @@ const syncTableFields = async (conn, tableName, fields, dbInfo) => {
         }
     }
 
-    Logger.info(`表 ${tableName} 字段同步完成`);
+    // 同步索引
+    Logger.info(`开始同步表 ${tableName} 的索引...`);
+    await syncTableIndexes(conn, tableName, fields, dbInfo);
+
+    Logger.info(`表 ${tableName} 字段和索引同步完成`);
+};
+
+// 同步表索引
+const syncTableIndexes = async (conn, tableName, fields, dbInfo) => {
+    // 获取现有索引
+    const existingIndexes = await getTableIndexes(conn, tableName);
+
+    // 系统字段索引（这些索引在表创建时已经建立）
+    const systemIndexes = ['idx_created_at', 'idx_updated_at', 'idx_state'];
+
+    // 收集需要创建的索引
+    const requiredIndexes = [];
+
+    for (const [fieldName, rule] of Object.entries(fields)) {
+        const ruleParts = parseFieldRule(rule);
+        const hasIndex = ruleParts[5]; // 第6个参数是索引设置
+
+        if (hasIndex && hasIndex !== 'null' && hasIndex !== '0' && hasIndex.toLowerCase() !== 'false') {
+            const indexName = `idx_${fieldName}`;
+            requiredIndexes.push({ fieldName, indexName });
+        }
+    }
+
+    // 检查需要创建的索引
+    for (const { fieldName, indexName } of requiredIndexes) {
+        if (!existingIndexes[indexName]) {
+            Logger.info(`字段 ${tableName}.${fieldName} 需要创建索引`);
+            await createIndex(conn, tableName, fieldName, dbInfo);
+        } else {
+            Logger.info(`字段 ${tableName}.${fieldName} 索引已存在，跳过`);
+        }
+    }
+
+    // 检查需要删除的索引（字段定义中不再需要索引的字段）
+    for (const [indexName, columns] of Object.entries(existingIndexes)) {
+        // 跳过系统索引
+        if (systemIndexes.includes(indexName)) {
+            continue;
+        }
+
+        // 检查是否为单字段索引且该字段在当前定义中不需要索引
+        if (columns.length === 1) {
+            const fieldName = columns[0];
+
+            // 检查该字段是否在当前表定义中
+            if (fields[fieldName]) {
+                const ruleParts = parseFieldRule(fields[fieldName]);
+                const hasIndex = ruleParts[5];
+
+                // 如果字段定义中不需要索引，则删除现有索引
+                if (!hasIndex || hasIndex === 'null' || hasIndex === '0' || hasIndex.toLowerCase() === 'false') {
+                    Logger.info(`字段 ${tableName}.${fieldName} 不再需要索引，删除索引 ${indexName}`);
+                    await dropIndex(conn, tableName, indexName);
+                }
+            } else {
+                // 字段已被删除，但我们不处理字段删除，只记录
+                Logger.info(`字段 ${tableName}.${fieldName} 不在当前定义中，保留索引 ${indexName}`);
+            }
+        }
+    }
+
+    Logger.info(`表 ${tableName} 索引同步完成`);
 };
 
 // 处理单个表文件
