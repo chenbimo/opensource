@@ -67,7 +67,7 @@ const typeMapping = {
     number: 'BIGINT',
     string: 'VARCHAR',
     text: 'MEDIUMTEXT',
-    array: 'VARCHAR' // 动态长度，根据字段定义确定
+    array: 'VARCHAR' // 使用管道符连接元素存储
 };
 
 // 获取字段的SQL定义
@@ -88,36 +88,13 @@ const getColumnDefinition = (fieldName, rule, withoutIndex = false) => {
     // 处理字符串类型的长度
     if (type === 'string') {
         const maxLength = maxStr === 'null' ? 255 : parseInt(maxStr);
-
-        // 如果长度超过 VARCHAR 的最大限制，自动转换为 TEXT 类型
-        if (maxLength > 65535) {
-            sqlType = 'MEDIUMTEXT';
-            console.log(`⚠️  字段 ${fieldName} 长度 ${maxLength} 超过 VARCHAR 限制，自动转换为 MEDIUMTEXT`);
-        } else if (maxLength > 16383) {
-            sqlType = 'TEXT';
-            console.log(`⚠️  字段 ${fieldName} 长度 ${maxLength} 超过常规限制，自动转换为 TEXT`);
-        } else {
-            sqlType = `VARCHAR(${maxLength})`;
-        }
+        sqlType = `VARCHAR(${maxLength})`;
     }
 
     // 处理数组类型的长度
     if (type === 'array') {
         const maxLength = maxStr === 'null' ? 1000 : parseInt(maxStr);
-
-        // 数组类型存储为JSON字符串，需要考虑元素数量和每个元素的长度
-        // 保守估计每个元素平均50个字符，加上JSON格式开销
-        const estimatedLength = Math.max(maxLength * 50 + 100, 1000);
-
-        if (estimatedLength > 65535) {
-            sqlType = 'MEDIUMTEXT';
-            console.log(`⚠️  字段 ${fieldName} 数组容量 ${maxLength} 预估长度超过 VARCHAR 限制，自动转换为 MEDIUMTEXT`);
-        } else if (estimatedLength > 16383) {
-            sqlType = 'TEXT';
-            console.log(`⚠️  字段 ${fieldName} 数组容量 ${maxLength} 预估长度超过常规限制，自动转换为 TEXT`);
-        } else {
-            sqlType = `VARCHAR(${estimatedLength})`;
-        }
+        sqlType = `VARCHAR(${maxLength})`;
     }
 
     // 构建完整的列定义
