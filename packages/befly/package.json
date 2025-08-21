@@ -36,7 +36,7 @@
         "config/",
         "libs/",
         "plugins/",
-        "schema/",
+        "tables/",
         "utils/",
         ".gitignore",
         ".npmignore",

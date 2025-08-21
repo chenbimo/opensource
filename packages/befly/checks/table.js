@@ -4,9 +4,9 @@ import { Logger } from '../utils/Logger.js';
 
 export default async () => {
     try {
-        const schemaGlob = new Bun.Glob('*.json');
-        const coreSchemaDir = path.join(__dirname, '..', 'schema');
-        const userSchemaDir = path.join(process.cwd(), 'schema');
+        const tablesGlob = new Bun.Glob('*.json');
+        const coreTablesDir = path.join(__dirname, '..', 'tables');
+        const userTablesDir = path.join(process.cwd(), 'tables');
 
         // 统计信息
         let totalFiles = 0;
@@ -19,12 +19,12 @@ export default async () => {
             const fileName = path.basename(file);
             try {
                 // 读取并解析 JSON 文件
-                const schema = await Bun.file(file).json();
+                const table = await Bun.file(file).json();
                 let fileValid = true;
                 let fileRules = 0;
 
-                // 检查 schema 中的每个验证规则
-                for (const [fieldName, rule] of Object.entries(schema)) {
+                // 检查 table 中的每个验证规则
+                for (const [fieldName, rule] of Object.entries(table)) {
                     fileRules++;
                     totalRules++;
 
@@ -99,21 +99,21 @@ export default async () => {
                     invalidFiles++;
                 }
             } catch (error) {
-                Logger.error(`Schema ${fileName} 解析失败: ${error.message}`);
+                Logger.error(`Table ${fileName} 解析失败: ${error.message}`);
                 invalidFiles++;
             }
         };
 
-        for await (const file of schemaGlob.scan({
-            cwd: coreSchemaDir,
+        for await (const file of tablesGlob.scan({
+            cwd: coreTablesDir,
             absolute: true,
             onlyFiles: true
         })) {
             await validateFile(file);
         }
 
-        for await (const file of schemaGlob.scan({
-            cwd: userSchemaDir,
+        for await (const file of tablesGlob.scan({
+            cwd: userTablesDir,
             absolute: true,
             onlyFiles: true
         })) {
@@ -126,7 +126,7 @@ export default async () => {
             return true;
         }
     } catch (error) {
-        Logger.error(`Schema 检查过程中出错:`, error);
+        Logger.error(`Tables 检查过程中出错:`, error);
         return false;
     }
 };
