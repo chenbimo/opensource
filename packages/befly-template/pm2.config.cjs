@@ -26,6 +26,7 @@ module.exports = {
                 // 参数检查,
                 PARAMS_CHECK: 0,
                 // 日志等级,
+                LOG_EXCLUDE_FIELDS: 'password,token',
                 LOG_LEVEL: 'info',
                 LOG_DIR: './logs',
                 LOG_TO_CONSOLE: 1,
