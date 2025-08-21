@@ -50,9 +50,9 @@ export default async () => {
                     const [name, type, minStr, maxStr, spec] = ruleParts;
 
                     // 验证类型（必须严格使用小写类型名称）
-                    const validTypes = ['number', 'string', 'array'];
+                    const validTypes = ['number', 'string', 'text', 'array'];
                     if (!validTypes.includes(type)) {
-                        Logger.warn(`${fileName} 文件 ${fieldName} 类型 ${type} 不支持，应为小写的 number、string 或 array`);
+                        Logger.warn(`${fileName} 文件 ${fieldName} 类型 ${type} 不支持，应为小写的 number、string、text 或 array`);
                         fileValid = false;
                         continue;
                     }
@@ -90,7 +90,7 @@ export default async () => {
                                 fileValid = false;
                                 continue;
                             }
-                        } else if (type === 'string' || type === 'array') {
+                        } else if (type === 'string' || type === 'array' || type === 'text') {
                             // 尝试编译正则表达式以检查是否有效
                             try {
                                 new RegExp(spec);
