@@ -23,10 +23,20 @@ export default async () => {
                 let fileValid = true;
                 let fileRules = 0;
 
+                // 保留字段列表
+                const reservedFields = ['id', 'created_at', 'updated_at', 'deleted_at', 'state'];
+
                 // 检查 table 中的每个验证规则
                 for (const [fieldName, rule] of Object.entries(table)) {
                     fileRules++;
                     totalRules++;
+
+                    // 检查是否使用了保留字段
+                    if (reservedFields.includes(fieldName)) {
+                        Logger.error(`${fileName} 文件包含保留字段 ${fieldName}，不能在表定义中使用以下字段: ${reservedFields.join(', ')}`);
+                        fileValid = false;
+                        continue;
+                    }
 
                     // 验证规则格式
                     const ruleParts = ruleSplit(rule);
