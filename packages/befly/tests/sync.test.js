@@ -258,10 +258,10 @@ describe('数据库同步功能测试', () => {
         test('系统字段应该自动添加到每个表', () => {
             const systemFields = [
                 { name: 'id', type: 'BIGINT', isPrimary: true },
-                { name: 'created_at', type: 'BIGINT', nullable: false },
-                { name: 'updated_at', type: 'BIGINT', nullable: false },
-                { name: 'deleted_at', type: 'BIGINT', nullable: true },
-                { name: 'state', type: 'INT', default: 0 }
+                { name: 'created_at', type: 'BIGINT', nullable: false, default: 0 },
+                { name: 'updated_at', type: 'BIGINT', nullable: false, default: 0 },
+                { name: 'deleted_at', type: 'BIGINT', nullable: false, default: 0 },
+                { name: 'state', type: 'BIGINT', nullable: false, default: 0 }
             ];
 
             systemFields.forEach((field) => {

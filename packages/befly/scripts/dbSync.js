@@ -98,7 +98,7 @@ const getColumnDefinition = (fieldName, rule, withoutIndex = false) => {
     }
 
     // 构建完整的列定义
-    let columnDef = `\`${fieldName}\` ${sqlType}`;
+    let columnDef = `\`${fieldName}\` ${sqlType} NOT NULL`;
 
     // 添加默认值
     if (defaultValue && defaultValue !== 'null') {
@@ -110,11 +110,11 @@ const getColumnDefinition = (fieldName, rule, withoutIndex = false) => {
             columnDef += ` DEFAULT "${defaultValue.replace(/"/g, '\\"')}"`;
         }
     } else {
-        // 根据字段类型设置合适的默认值
+        // 根据字段类型设置合适的默认值，所有字段都不允许为NULL
         if (type === 'string' || type === 'text' || type === 'array') {
-            columnDef += ` DEFAULT NULL`;
+            columnDef += ` DEFAULT ""`;
         } else if (type === 'number') {
-            columnDef += ` DEFAULT NULL`;
+            columnDef += ` DEFAULT 0`;
         }
     }
 
@@ -253,10 +253,10 @@ const createTable = async (conn, tableName, fields) => {
 
     // 添加系统默认字段
     columns.push('`id` BIGINT PRIMARY KEY COMMENT "主键ID"');
-    columns.push('`created_at` BIGINT NOT NULL COMMENT "创建时间"');
-    columns.push('`updated_at` BIGINT NOT NULL COMMENT "更新时间"');
-    columns.push('`deleted_at` BIGINT DEFAULT NULL COMMENT "删除时间"');
-    columns.push('`state` BIGINT DEFAULT 0 COMMENT "状态字段"');
+    columns.push('`created_at` BIGINT NOT NULL DEFAULT 0 COMMENT "创建时间"');
+    columns.push('`updated_at` BIGINT NOT NULL DEFAULT 0 COMMENT "更新时间"');
+    columns.push('`deleted_at` BIGINT NOT NULL DEFAULT 0 COMMENT "删除时间"');
+    columns.push('`state` BIGINT NOT NULL DEFAULT 0 COMMENT "状态字段"');
 
     // 添加系统字段的索引
     indexes.push('INDEX `idx_created_at` (`created_at`)');
