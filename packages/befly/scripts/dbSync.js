@@ -222,18 +222,80 @@ const compareFieldDefinition = (existingColumn, newRule) => {
     };
 };
 
-// 生成ALTER语句来修改字段
+// 生成ALTER语句来修改字段（使用MySQL 8 Online DDL）
 const generateAlterStatement = (tableName, fieldName, rule, changes) => {
     const columnDef = getColumnDefinition(fieldName, rule);
 
-    // 对于大多数变化，使用 MODIFY COLUMN
-    return `ALTER TABLE \`${tableName}\` MODIFY COLUMN ${columnDef}`;
+    // 使用 MySQL 8 的 Online DDL 语法
+    // ALGORITHM=INSTANT: 立即执行，不复制数据
+    // ALGORITHM=INPLACE: 就地执行，不阻塞DML操作
+    // LOCK=NONE: 不锁定表，允许并发读写
+    return `ALTER TABLE \`${tableName}\` MODIFY COLUMN ${columnDef}, ALGORITHM=INPLACE, LOCK=NONE`;
+};
+
+// 生成添加字段的ALTER语句（使用MySQL 8 Online DDL）
+const generateAddColumnStatement = (tableName, fieldName, rule) => {
+    const columnDef = getColumnDefinition(fieldName, rule);
+
+    // 使用 Online DDL 添加字段
+    return `ALTER TABLE \`${tableName}\` ADD COLUMN ${columnDef}, ALGORITHM=INSTANT, LOCK=NONE`;
+};
+
+// 检查MySQL版本和Online DDL支持
+const checkMySQLVersion = async (conn) => {
+    try {
+        const result = await conn.query('SELECT VERSION() AS version');
+        const version = result[0].version;
+        Logger.info(`MySQL/MariaDB 版本: ${version}`);
+
+        // 检查是否支持 Online DDL
+        const majorVersion = parseInt(version.split('.')[0]);
+        const isMySQL8Plus = version.toLowerCase().includes('mysql') && majorVersion >= 8;
+        const isMariaDB10Plus = version.toLowerCase().includes('mariadb') && majorVersion >= 10;
+
+        const supportsOnlineDDL = isMySQL8Plus || isMariaDB10Plus;
+        Logger.info(`Online DDL 支持: ${supportsOnlineDDL ? '是' : '否'}`);
+
+        return { version, supportsOnlineDDL };
+    } catch (error) {
+        Logger.warn('无法检测数据库版本，使用默认设置');
+        return { version: 'unknown', supportsOnlineDDL: false };
+    }
+};
+
+// 安全执行DDL语句
+const executeDDLSafely = async (conn, sql, fallbackSql = null) => {
+    try {
+        Logger.info(`执行SQL: ${sql}`);
+        await conn.query(sql);
+        return true;
+    } catch (error) {
+        Logger.warn(`Online DDL 执行失败: ${error.message}`);
+
+        if (fallbackSql) {
+            Logger.info(`尝试回退SQL: ${fallbackSql}`);
+            try {
+                await conn.query(fallbackSql);
+                Logger.info('回退SQL执行成功');
+                return true;
+            } catch (fallbackError) {
+                Logger.error(`回退SQL也执行失败: ${fallbackError.message}`);
+                throw fallbackError;
+            }
+        } else {
+            throw error;
+        }
+    }
 };
 
 // 同步表字段
-const syncTableFields = async (conn, tableName, fields) => {
+const syncTableFields = async (conn, tableName, fields, dbInfo) => {
     const existingColumns = await getTableColumns(conn, tableName);
     const systemFields = ['id', 'created_at', 'updated_at', 'deleted_at', 'state'];
+
+    Logger.info(`开始同步表 ${tableName} 的字段...`);
+    Logger.info(`现有字段数量: ${Object.keys(existingColumns).length}`);
+    Logger.info(`新定义字段数量: ${Object.keys(fields).length}`);
 
     for (const [fieldName, rule] of Object.entries(fields)) {
         try {
@@ -247,20 +309,25 @@ const syncTableFields = async (conn, tableName, fields) => {
                         Logger.info(`  - ${change.type}: ${change.current} → ${change.new}`);
                     });
 
-                    // 生成并执行ALTER语句
-                    const alterSQL = generateAlterStatement(tableName, fieldName, rule, comparison.changes);
-                    Logger.info(`执行SQL: ${alterSQL}`);
+                    // 生成Online DDL语句
+                    const onlineSQL = generateAlterStatement(tableName, fieldName, rule, comparison.changes);
+                    const fallbackSQL = `ALTER TABLE \`${tableName}\` MODIFY COLUMN ${getColumnDefinition(fieldName, rule)}`;
 
-                    await conn.query(alterSQL);
+                    // 安全执行DDL
+                    await executeDDLSafely(conn, onlineSQL, dbInfo.supportsOnlineDDL ? null : fallbackSQL);
                     Logger.info(`表 ${tableName} 字段 ${fieldName} 更新成功`);
                 } else {
                     Logger.info(`字段 ${tableName}.${fieldName} 无变化，跳过`);
                 }
             } else {
                 // 添加新字段
-                const columnDef = getColumnDefinition(fieldName, rule);
-                const alterSQL = `ALTER TABLE \`${tableName}\` ADD COLUMN ${columnDef}`;
-                await conn.query(alterSQL);
+                Logger.info(`字段 ${tableName}.${fieldName} 不存在，需要添加`);
+
+                const onlineSQL = generateAddColumnStatement(tableName, fieldName, rule);
+                const fallbackSQL = `ALTER TABLE \`${tableName}\` ADD COLUMN ${getColumnDefinition(fieldName, rule)}`;
+
+                // 安全执行DDL
+                await executeDDLSafely(conn, onlineSQL, dbInfo.supportsOnlineDDL ? null : fallbackSQL);
                 Logger.info(`表 ${tableName} 添加字段 ${fieldName} 成功`);
             }
         } catch (error) {
@@ -268,10 +335,12 @@ const syncTableFields = async (conn, tableName, fields) => {
             throw error;
         }
     }
+
+    Logger.info(`表 ${tableName} 字段同步完成`);
 };
 
 // 处理单个表文件
-const processTableFile = async (conn, filePath) => {
+const processTableFile = async (conn, filePath, dbInfo) => {
     try {
         const fileName = path.basename(filePath, '.json');
         const tableName = fileName;
@@ -290,15 +359,18 @@ const processTableFile = async (conn, filePath) => {
         }
 
         // 检查表是否存在
-        if (await tableExists(conn, tableName)) {
-            Logger.info(`表 ${tableName} 已存在，同步字段...`);
-            await syncTableFields(conn, tableName, tableDefinition);
+        const exists = await tableExists(conn, tableName);
+        Logger.info(`表 ${tableName} 存在状态: ${exists}`);
+
+        if (exists) {
+            Logger.info(`表 ${tableName} 已存在，检查字段变化并同步...`);
+            await syncTableFields(conn, tableName, tableDefinition, dbInfo);
         } else {
-            Logger.info(`表 ${tableName} 不存在，创建表...`);
+            Logger.info(`表 ${tableName} 不存在，创建新表...`);
             await createTable(conn, tableName, tableDefinition);
         }
 
-        Logger.info(`表 ${tableName} 同步完成`);
+        Logger.info(`表 ${tableName} 处理完成`);
     } catch (error) {
         Logger.error(`处理表文件 ${filePath} 时出错:`, error);
         throw error;
@@ -316,21 +388,40 @@ const syncDatabase = async () => {
         conn = await createConnection();
         Logger.info('数据库连接成功');
 
+        // 检查数据库版本和 Online DDL 支持
+        const dbInfo = await checkMySQLVersion(conn);
+        Logger.info(`数据库信息: ${dbInfo.version}`);
+        Logger.info(`Online DDL 支持: ${dbInfo.supportsOnlineDDL ? '是' : '否'}`);
+
         // 扫描tables目录
         const tablesGlob = new Bun.Glob('*.json');
         const coreTablesDir = path.join(__dirname, '..', 'tables');
         const userTablesDir = path.join(process.cwd(), 'tables');
 
         let processedCount = 0;
+        let createdTables = 0;
+        let modifiedTables = 0;
+
+        Logger.info('开始处理表定义文件...');
 
         // 处理核心表定义
+        Logger.info(`扫描核心表目录: ${coreTablesDir}`);
         try {
             for await (const file of tablesGlob.scan({
                 cwd: coreTablesDir,
                 absolute: true,
                 onlyFiles: true
             })) {
-                await processTableFile(conn, file);
+                const tableName = path.basename(file, '.json');
+                const exists = await tableExists(conn, tableName);
+
+                await processTableFile(conn, file, dbInfo);
+
+                if (exists) {
+                    modifiedTables++;
+                } else {
+                    createdTables++;
+                }
                 processedCount++;
             }
         } catch (error) {
@@ -338,20 +429,43 @@ const syncDatabase = async () => {
         }
 
         // 处理用户表定义
+        Logger.info(`扫描用户表目录: ${userTablesDir}`);
         try {
             for await (const file of tablesGlob.scan({
                 cwd: userTablesDir,
                 absolute: true,
                 onlyFiles: true
             })) {
-                await processTableFile(conn, file);
+                const tableName = path.basename(file, '.json');
+                const exists = await tableExists(conn, tableName);
+
+                await processTableFile(conn, file, dbInfo);
+
+                if (exists) {
+                    modifiedTables++;
+                } else {
+                    createdTables++;
+                }
                 processedCount++;
             }
         } catch (error) {
             Logger.warn('用户表目录扫描出错:', error.message);
         }
 
-        Logger.info(`数据库同步完成，共处理 ${processedCount} 个表`);
+        // 显示同步统计信息
+        Logger.info('='.repeat(50));
+        Logger.info('数据库表结构同步完成');
+        Logger.info('='.repeat(50));
+        Logger.info(`总处理表数: ${processedCount}`);
+        Logger.info(`新创建表数: ${createdTables}`);
+        Logger.info(`修改表数: ${modifiedTables}`);
+        Logger.info(`使用的DDL模式: ${dbInfo.supportsOnlineDDL ? 'Online DDL (无锁)' : '传统DDL'}`);
+        Logger.info(`数据库版本: ${dbInfo.version}`);
+        Logger.info('='.repeat(50));
+
+        if (processedCount === 0) {
+            Logger.warn('没有找到任何表定义文件，请检查 tables/ 目录');
+        }
     } catch (error) {
         Logger.error('数据库同步失败:', error);
         process.exit(1);
