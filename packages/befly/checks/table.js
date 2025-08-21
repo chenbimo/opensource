@@ -82,27 +82,27 @@ export default async () => {
                     }
 
                     // 验证最小值/最大值
-                    if (minStr !== '' && minStr !== 'null' && isNaN(parseInt(minStr))) {
-                        Logger.warn(`${fileName} 文件 ${fieldName} 最小值 ${minStr} 应为数字或空字符串`);
+                    if (minStr !== 'null' && isNaN(parseInt(minStr))) {
+                        Logger.warn(`${fileName} 文件 ${fieldName} 最小值 ${minStr} 应为数字或 null`);
                         fileValid = false;
                         continue;
                     }
 
-                    if (maxStr !== '' && maxStr !== 'null' && isNaN(parseInt(maxStr))) {
-                        Logger.warn(`${fileName} 文件 ${fieldName} 最大值 ${maxStr} 应为数字或空字符串`);
+                    if (maxStr !== 'null' && isNaN(parseInt(maxStr))) {
+                        Logger.warn(`${fileName} 文件 ${fieldName} 最大值 ${maxStr} 应为数字或 null`);
                         fileValid = false;
                         continue;
                     }
 
                     // 验证索引字段
-                    if (isIndexStr !== '' && isIndexStr !== 'null' && !['0', '1'].includes(isIndexStr)) {
-                        Logger.warn(`${fileName} 文件 ${fieldName} 索引标识 ${isIndexStr} 应为 0 或 1`);
+                    if (isIndexStr !== 'null' && !['0', '1'].includes(isIndexStr)) {
+                        Logger.warn(`${fileName} 文件 ${fieldName} 索引标识 ${isIndexStr} 应为 0、1 或 null`);
                         fileValid = false;
                         continue;
                     }
 
                     // 验证正则约束
-                    if (regexConstraint !== '' && regexConstraint !== 'null') {
+                    if (regexConstraint !== 'null') {
                         if (type === 'number' && regexConstraint.includes('=')) {
                             // 数字计算表达式应包含安全字符
                             const safePattern = /^[x\d\+\-\*\/\(\)\.\s\%]+$/;
