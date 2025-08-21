@@ -53,12 +53,6 @@ Befly CLI 工具 v2.0.12
     }
 
     console.log(`
-示例:
-  befly dbSync              # 同步数据库表结构
-  befly checkTable          # 检查表定义文件
-  befly syncDemo            # 运行同步演示
-  befly fieldChangeDemo     # 运行字段变更演示
-
 选项:
   -h, --help               显示此帮助信息
   -v, --version            显示版本信息

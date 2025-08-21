@@ -1,0 +1,10 @@
+{
+    "name": "产品名称|string|1|100|产品的名称",
+    "description": "产品描述|text|0|null|产品的详细描述",
+    "price": "价格|number|0|999999999|产品价格，单位分",
+    "category": "分类|string|1|50|产品分类",
+    "tags": "标签|array|0|null|产品标签",
+    "images": "图片|array|0|null|产品图片列表",
+    "stock": "库存|number|0|999999|产品库存数量",
+    "sku": "SKU编码|string|1|50|产品SKU编码"
+}

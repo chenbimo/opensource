@@ -1,11 +1,53 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { existsSync, readFileSync } from 'node:fs';
 import { Env } from '../config/env.js';
 import { Logger } from '../utils/logger.js';
 import { ruleSplit } from '../utils/util.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// 自动加载环境配置文件
+const loadEnvFile = () => {
+    const envFiles = [path.join(process.cwd(), '.env.development'), path.join(process.cwd(), '.env.local'), path.join(process.cwd(), '.env')];
+
+    for (const envFile of envFiles) {
+        if (existsSync(envFile)) {
+            console.log(`📄 加载环境配置文件: ${envFile}`);
+            const envContent = readFileSync(envFile, 'utf8');
+            const lines = envContent.split('\n');
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (trimmed && !trimmed.startsWith('#')) {
+                    const [key, ...valueParts] = trimmed.split('=');
+                    if (key && valueParts.length > 0) {
+                        const value = valueParts.join('=').replace(/^["']|["']$/g, '');
+                        process.env[key] = value;
+                    }
+                }
+            }
+            break;
+        }
+    }
+};
+
+// 初始化时加载环境配置
+loadEnvFile();
+
+// 专门用于处理管道符分隔的字段规则
+const parseFieldRule = (rule) => {
+    const allParts = rule.split('|');
+
+    // 如果部分数量小于等于5，直接返回
+    if (allParts.length <= 5) {
+        return allParts;
+    }
+
+    // 只取前4个部分，剩余的都合并为第5个部分
+    return [allParts[0], allParts[1], allParts[2], allParts[3], allParts.slice(4).join('|')];
+};
 
 // 数据类型映射到数据库字段类型
 const typeMapping = {
@@ -17,9 +59,10 @@ const typeMapping = {
 
 // 获取字段的SQL定义
 const getColumnDefinition = (fieldName, rule) => {
-    const ruleParts = ruleSplit(rule);
+    const ruleParts = parseFieldRule(rule);
+
     if (ruleParts.length !== 5) {
-        throw new Error(`字段 ${fieldName} 规则格式错误`);
+        throw new Error(`字段 ${fieldName} 规则格式错误，期望5个部分，实际得到${ruleParts.length}个部分: [${ruleParts.join(', ')}]`);
     }
 
     const [displayName, type, minStr, maxStr, spec] = ruleParts;
@@ -32,7 +75,17 @@ const getColumnDefinition = (fieldName, rule) => {
     // 处理字符串类型的长度
     if (type === 'string') {
         const maxLength = maxStr === 'null' ? 255 : parseInt(maxStr);
-        sqlType = `VARCHAR(${Math.min(maxLength, 65535)})`;
+
+        // 如果长度超过 VARCHAR 的最大限制，自动转换为 TEXT 类型
+        if (maxLength > 65535) {
+            sqlType = 'MEDIUMTEXT';
+            console.log(`⚠️  字段 ${fieldName} 长度 ${maxLength} 超过 VARCHAR 限制，自动转换为 MEDIUMTEXT`);
+        } else if (maxLength > 16383) {
+            sqlType = 'TEXT';
+            console.log(`⚠️  字段 ${fieldName} 长度 ${maxLength} 超过常规限制，自动转换为 TEXT`);
+        } else {
+            sqlType = `VARCHAR(${maxLength})`;
+        }
     }
 
     // 构建完整的列定义
@@ -48,10 +101,18 @@ const getColumnDefinition = (fieldName, rule) => {
 
 // 创建数据库连接
 const createConnection = async () => {
+    console.log(`🔍 检查 MySQL 配置...`);
+    console.log(`MYSQL_ENABLE: ${process.env.MYSQL_ENABLE}`);
+    console.log(`MYSQL_HOST: ${process.env.MYSQL_HOST}`);
+    console.log(`MYSQL_PORT: ${process.env.MYSQL_PORT}`);
+    console.log(`MYSQL_DB: ${process.env.MYSQL_DB}`);
+    console.log(`MYSQL_USER: ${process.env.MYSQL_USER}`);
+
     if (Env.MYSQL_ENABLE !== 1) {
         throw new Error('MySQL 未启用，请在环境变量中设置 MYSQL_ENABLE=1');
     }
 
+    console.log(`📦 导入 mariadb 驱动...`);
     const mariadb = await import('mariadb');
 
     const config = {
@@ -63,6 +124,9 @@ const createConnection = async () => {
         charset: 'utf8mb4',
         timezone: Env.TIMEZONE || 'local'
     };
+
+    console.log(`🔌 尝试连接数据库...`);
+    console.log(`连接配置: ${config.user}@${config.host}:${config.port}/${config.database}`);
 
     return await mariadb.createConnection(config);
 };
@@ -126,6 +190,8 @@ const createTable = async (conn, tableName, fields) => {
             columns.push(columnDef);
         } catch (error) {
             Logger.error(`处理字段 ${fieldName} 时出错:`, error.message);
+            console.error(`字段 ${fieldName} 的规则: ${rule}`);
+            console.error(`错误详情:`, error);
             throw error;
         }
     }
@@ -145,7 +211,7 @@ const createTable = async (conn, tableName, fields) => {
 
 // 比较字段定义是否有变化
 const compareFieldDefinition = (existingColumn, newRule) => {
-    const ruleParts = ruleSplit(newRule);
+    const ruleParts = parseFieldRule(newRule);
     if (ruleParts.length !== 5) {
         return { hasChanges: false, reason: '规则格式错误' };
     }
@@ -249,12 +315,24 @@ const checkMySQLVersion = async (conn) => {
         Logger.info(`MySQL/MariaDB 版本: ${version}`);
 
         // 检查是否支持 Online DDL
-        const majorVersion = parseInt(version.split('.')[0]);
-        const isMySQL8Plus = version.toLowerCase().includes('mysql') && majorVersion >= 8;
-        const isMariaDB10Plus = version.toLowerCase().includes('mariadb') && majorVersion >= 10;
+        const versionParts = version.split('.');
+        const majorVersion = parseInt(versionParts[0]);
+        const minorVersion = parseInt(versionParts[1]);
 
-        const supportsOnlineDDL = isMySQL8Plus || isMariaDB10Plus;
+        const isMySQL = version.toLowerCase().includes('mysql') || !version.toLowerCase().includes('mariadb');
+        const isMariaDB = version.toLowerCase().includes('mariadb');
+
+        // MySQL 5.6+ 支持 Online DDL，MySQL 8.0+ 支持更完善的 Online DDL
+        const isMySQL56Plus = isMySQL && (majorVersion > 5 || (majorVersion === 5 && minorVersion >= 6));
+        // MariaDB 10.0+ 支持 Online DDL
+        const isMariaDB10Plus = isMariaDB && majorVersion >= 10;
+
+        const supportsOnlineDDL = isMySQL56Plus || isMariaDB10Plus;
         Logger.info(`Online DDL 支持: ${supportsOnlineDDL ? '是' : '否'}`);
+
+        if (supportsOnlineDDL) {
+            Logger.info(`数据库类型: ${isMySQL ? 'MySQL' : 'MariaDB'} ${majorVersion}.${minorVersion}`);
+        }
 
         return { version, supportsOnlineDDL };
     } catch (error) {
@@ -372,7 +450,8 @@ const processTableFile = async (conn, filePath, dbInfo) => {
 
         Logger.info(`表 ${tableName} 处理完成`);
     } catch (error) {
-        Logger.error(`处理表文件 ${filePath} 时出错:`, error);
+        Logger.error(`处理表文件 ${filePath} 时出错:`, error.message);
+        console.error(`错误详情:`, error);
         throw error;
     }
 };
@@ -481,9 +560,13 @@ const syncDatabase = async () => {
     }
 };
 
-// 如果直接运行此脚本
-if (import.meta.url === `file://${process.argv[1]}`) {
-    syncDatabase();
+// 如果直接运行此脚本或通过 CLI 调用
+if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('dbSync.js')) {
+    console.log(`🚀 开始执行数据库同步脚本...`);
+    syncDatabase().catch((error) => {
+        console.error('❌ 数据库同步失败:', error);
+        process.exit(1);
+    });
 }
 
 export { syncDatabase };
