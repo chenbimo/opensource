@@ -1,10 +1,10 @@
 {
-    "name": "产品名称|string|1|100|产品的名称|null|1",
-    "description": "产品描述|text|0|null|产品的详细描述|null|0",
-    "price": "价格|number|0|999999999|产品价格，单位分|0|1",
-    "category": "分类|string|1|50|产品分类|null|1",
-    "tags": "标签|array|0|null|产品标签|null|0",
-    "images": "图片|array|0|null|产品图片列表|null|0",
-    "stock": "库存|number|0|999999|产品库存数量|0|0",
-    "sku": "SKU编码|string|1|50|产品SKU编码|null|1"
+    "name": "商品名称|string|1|200|产品|1|",
+    "description": "商品描述|text|0|2000||0|",
+    "price": "价格|number|0|999999|0|1|",
+    "category": "分类|string|1|50|默认分类|1|",
+    "tags": "标签|array|0|20|[]|0|",
+    "images": "图片|array|0|10|[]|0|",
+    "stock": "库存|number|0|999999|0|0|",
+    "sku": "商品编码|string|1|100||1|"
 }
