@@ -1,12 +1,13 @@
 import path from 'node:path';
 import { Logger } from '../utils/Logger.js';
 import { parseFieldRule } from '../utils/util.js';
+import { __dirtables, getProjectDir } from '../system.js';
 
 export default async () => {
     try {
         const tablesGlob = new Bun.Glob('*.json');
-        const coreTablesDir = path.join(__dirname, '..', 'tables');
-        const userTablesDir = path.join(process.cwd(), 'tables');
+        const coreTablesDir = __dirtables;
+        const userTablesDir = getProjectDir('tables');
 
         // 统计信息
         let totalFiles = 0;

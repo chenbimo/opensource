@@ -4,10 +4,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { Env } from '../config/env.js';
 import { Logger } from '../utils/logger.js';
 import { parseFieldRule } from '../utils/util.js';
+import { __dirtables, getProjectDir } from '../system.js';
 import tableCheck from '../checks/table.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // 自动加载环境配置文件
 const loadEnvFile = () => {
@@ -608,8 +606,8 @@ const syncDatabase = async () => {
         // 扫描tables目录
         Logger.info('步骤 3/3: 同步数据库表结构...');
         const tablesGlob = new Bun.Glob('*.json');
-        const coreTablesDir = path.join(__dirname, '..', 'tables');
-        const userTablesDir = path.join(process.cwd(), 'tables');
+        const coreTablesDir = __dirtables;
+        const userTablesDir = getProjectDir('tables');
 
         let processedCount = 0;
         let createdTables = 0;

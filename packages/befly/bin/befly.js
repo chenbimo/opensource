@@ -10,13 +10,11 @@ import { resolve, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
+import { __dirroot, __dirscript } from '../system.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// befly 包的根目录 (从 bin 目录向上一级)
-const BEFLY_ROOT = join(__dirname, '..');
-const SCRIPTS_DIR = join(BEFLY_ROOT, 'scripts');
+// 使用 system.js 中定义的路径变量
+const BEFLY_ROOT = __dirroot;
+const SCRIPTS_DIR = __dirscript;
 
 // 显示帮助信息
 const showHelp = async () => {
