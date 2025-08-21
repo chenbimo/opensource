@@ -3,7 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync } from 'node:fs';
 import { Env } from '../config/env.js';
 import { Logger } from '../utils/logger.js';
-import { ruleSplit } from '../utils/util.js';
+import { parseFieldRule } from '../utils/util.js';
+import tableCheck from '../checks/table.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,32 +37,6 @@ const loadEnvFile = () => {
 // 初始化时加载环境配置
 loadEnvFile();
 
-// 专门用于处理管道符分隔的字段规则
-const parseFieldRule = (rule) => {
-    const allParts = rule.split('|');
-
-    // 现在支持7个部分：显示名|类型|最小值|最大值|默认值|是否索引|正则约束
-    if (allParts.length <= 7) {
-        // 如果少于7个部分，补齐缺失的部分为 null
-        while (allParts.length < 7) {
-            allParts.push('null');
-        }
-        return allParts;
-    }
-
-    // 如果超过7个部分，把第7个部分之后的内容合并为第7个部分（正则表达式可能包含管道符）
-    const mergedRule = allParts.slice(6).join('|'); // 合并最后的正则部分
-    return [
-        allParts[0], // 显示名
-        allParts[1], // 类型
-        allParts[2], // 最小值
-        allParts[3], // 最大值
-        allParts[4], // 默认值
-        allParts[5], // 是否索引
-        mergedRule // 正则约束（可能包含管道符）
-    ];
-};
-
 // 数据类型映射到数据库字段类型
 const typeMapping = {
     number: 'BIGINT',
@@ -73,11 +48,6 @@ const typeMapping = {
 // 获取字段的SQL定义
 const getColumnDefinition = (fieldName, rule, withoutIndex = false) => {
     const ruleParts = parseFieldRule(rule);
-
-    if (ruleParts.length !== 7) {
-        throw new Error(`字段 ${fieldName} 规则格式错误，期望7个部分，实际得到${ruleParts.length}个部分: [${ruleParts.join(', ')}]`);
-    }
-
     const [displayName, type, minStr, maxStr, defaultValue, hasIndex, spec] = ruleParts;
 
     let sqlType = typeMapping[type];
@@ -102,20 +72,22 @@ const getColumnDefinition = (fieldName, rule, withoutIndex = false) => {
 
     // 添加默认值
     if (defaultValue && defaultValue !== 'null') {
-        if (type === 'string' || type === 'text') {
+        if (type === 'string') {
             columnDef += ` DEFAULT "${defaultValue.replace(/"/g, '\\"')}"`;
         } else if (type === 'number') {
             columnDef += ` DEFAULT ${defaultValue}`;
         } else if (type === 'array') {
             columnDef += ` DEFAULT "${defaultValue.replace(/"/g, '\\"')}"`;
         }
+        // text 类型不添加默认值，因为MySQL不支持TEXT类型的默认值
     } else {
         // 根据字段类型设置合适的默认值，所有字段都不允许为NULL
-        if (type === 'string' || type === 'text' || type === 'array') {
+        if (type === 'string' || type === 'array') {
             columnDef += ` DEFAULT ""`;
         } else if (type === 'number') {
             columnDef += ` DEFAULT 0`;
         }
+        // text 类型不添加默认值，因为MySQL不支持TEXT类型的默认值
     }
 
     // 添加注释
@@ -202,7 +174,7 @@ const getTableColumns = async (conn, tableName) => {
 // 获取表的现有索引信息
 const getTableIndexes = async (conn, tableName) => {
     const result = await conn.query(
-        `SELECT DISTINCT INDEX_NAME, COLUMN_NAME
+        `SELECT INDEX_NAME, COLUMN_NAME, SEQ_IN_INDEX
          FROM information_schema.STATISTICS
          WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND INDEX_NAME != 'PRIMARY'
          ORDER BY INDEX_NAME, SEQ_IN_INDEX`,
@@ -265,23 +237,16 @@ const createTable = async (conn, tableName, fields) => {
 
     // 添加自定义字段
     for (const [fieldName, rule] of Object.entries(fields)) {
-        try {
-            const columnDef = getColumnDefinition(fieldName, rule);
-            columns.push(columnDef);
+        const columnDef = getColumnDefinition(fieldName, rule);
+        columns.push(columnDef);
 
-            // 检查是否需要创建索引
-            const ruleParts = parseFieldRule(rule);
-            const hasIndex = ruleParts[5]; // 第6个参数是索引设置
+        // 检查是否需要创建索引
+        const ruleParts = parseFieldRule(rule);
+        const hasIndex = ruleParts[5]; // 第6个参数是索引设置
 
-            if (hasIndex && hasIndex !== 'null' && hasIndex !== '0' && hasIndex.toLowerCase() !== 'false') {
-                indexes.push(`INDEX \`idx_${fieldName}\` (\`${fieldName}\`)`);
-                console.log(`📊 为字段 ${tableName}.${fieldName} 创建索引`);
-            }
-        } catch (error) {
-            Logger.error(`处理字段 ${fieldName} 时出错:`, error.message);
-            console.error(`字段 ${fieldName} 的规则: ${rule}`);
-            console.error(`错误详情:`, error);
-            throw error;
+        if (hasIndex && hasIndex !== 'null' && hasIndex !== '0' && hasIndex.toLowerCase() !== 'false') {
+            indexes.push(`INDEX \`idx_${fieldName}\` (\`${fieldName}\`)`);
+            console.log(`📊 为字段 ${tableName}.${fieldName} 创建索引`);
         }
     }
 
@@ -299,18 +264,11 @@ const createTable = async (conn, tableName, fields) => {
 // 比较字段定义是否有变化
 const compareFieldDefinition = (existingColumn, newRule) => {
     const ruleParts = parseFieldRule(newRule);
-    if (ruleParts.length !== 7) {
-        return { hasChanges: false, reason: '规则格式错误' };
-    }
-
     const [displayName, type, minStr, maxStr, defaultValue, hasIndex, spec] = ruleParts;
     const changes = [];
 
     // 检查数据类型变化
     const expectedType = typeMapping[type];
-    if (!expectedType) {
-        return { hasChanges: false, reason: `不支持的数据类型: ${type}` };
-    }
 
     // 对于 string 类型，检查长度变化
     if (type === 'string') {
@@ -362,7 +320,7 @@ const compareFieldDefinition = (existingColumn, newRule) => {
         }
     }
 
-    // 检查基础数据类型变化（这个比较复杂，暂时只检查明显的不匹配）
+    // 检查基础数据类型变化
     const currentType = existingColumn.type.toLowerCase();
     let expectedDbType = '';
 
@@ -485,49 +443,44 @@ const syncTableFields = async (conn, tableName, fields, dbInfo) => {
     Logger.info(`新定义字段数量: ${Object.keys(fields).length}`);
 
     for (const [fieldName, rule] of Object.entries(fields)) {
-        try {
-            if (existingColumns[fieldName]) {
-                // 字段已存在，检查是否需要修改
-                const comparison = compareFieldDefinition(existingColumns[fieldName], rule);
+        if (existingColumns[fieldName]) {
+            // 字段已存在，检查是否需要修改
+            const comparison = compareFieldDefinition(existingColumns[fieldName], rule);
 
-                if (comparison.hasChanges) {
-                    Logger.info(`字段 ${tableName}.${fieldName} 需要更新:`);
-                    comparison.changes.forEach((change) => {
-                        Logger.info(`  - ${change.type}: ${change.current} → ${change.new}`);
-                    });
+            if (comparison.hasChanges) {
+                Logger.info(`字段 ${tableName}.${fieldName} 需要更新:`);
+                comparison.changes.forEach((change) => {
+                    Logger.info(`  - ${change.type}: ${change.current} → ${change.new}`);
+                });
 
-                    // 生成Online DDL语句
-                    const onlineSQL = generateAlterStatement(tableName, fieldName, rule, comparison.changes);
-                    const fallbackSQL = `ALTER TABLE \`${tableName}\` MODIFY COLUMN ${getColumnDefinition(fieldName, rule)}`;
+                // 生成Online DDL语句
+                const onlineSQL = generateAlterStatement(tableName, fieldName, rule, comparison.changes);
+                const fallbackSQL = `ALTER TABLE \`${tableName}\` MODIFY COLUMN ${getColumnDefinition(fieldName, rule)}`;
 
-                    // 安全执行DDL
-                    await executeDDLSafely(conn, onlineSQL, dbInfo.supportsOnlineDDL ? null : fallbackSQL);
-                    Logger.info(`表 ${tableName} 字段 ${fieldName} 更新成功`);
-                } else {
-                    Logger.info(`字段 ${tableName}.${fieldName} 无变化，跳过`);
-                }
+                // 安全执行DDL（总是提供回退方案）
+                await executeDDLSafely(conn, onlineSQL, fallbackSQL);
+                Logger.info(`表 ${tableName} 字段 ${fieldName} 更新成功`);
             } else {
-                // 添加新字段
-                Logger.info(`字段 ${tableName}.${fieldName} 不存在，需要添加`);
-
-                const onlineSQL = generateAddColumnStatement(tableName, fieldName, rule);
-                const fallbackSQL = `ALTER TABLE \`${tableName}\` ADD COLUMN ${getColumnDefinition(fieldName, rule)}`;
-
-                // 安全执行DDL
-                await executeDDLSafely(conn, onlineSQL, dbInfo.supportsOnlineDDL ? null : fallbackSQL);
-                Logger.info(`表 ${tableName} 添加字段 ${fieldName} 成功`);
-
-                // 检查新字段是否需要创建索引
-                const ruleParts = parseFieldRule(rule);
-                const hasIndex = ruleParts[5]; // 第6个参数是索引设置
-
-                if (hasIndex && hasIndex !== 'null' && hasIndex !== '0' && hasIndex.toLowerCase() !== 'false') {
-                    await createIndex(conn, tableName, fieldName, dbInfo);
-                }
+                Logger.info(`字段 ${tableName}.${fieldName} 无变化，跳过`);
             }
-        } catch (error) {
-            Logger.error(`同步字段 ${fieldName} 时出错:`, error.message);
-            throw error;
+        } else {
+            // 添加新字段
+            Logger.info(`字段 ${tableName}.${fieldName} 不存在，需要添加`);
+
+            const onlineSQL = generateAddColumnStatement(tableName, fieldName, rule);
+            const fallbackSQL = `ALTER TABLE \`${tableName}\` ADD COLUMN ${getColumnDefinition(fieldName, rule)}`;
+
+            // 安全执行DDL（总是提供回退方案）
+            await executeDDLSafely(conn, onlineSQL, fallbackSQL);
+            Logger.info(`表 ${tableName} 添加字段 ${fieldName} 成功`);
+
+            // 检查新字段是否需要创建索引
+            const ruleParts = parseFieldRule(rule);
+            const hasIndex = ruleParts[5]; // 第6个参数是索引设置
+
+            if (hasIndex && hasIndex !== 'null' && hasIndex !== '0' && hasIndex.toLowerCase() !== 'false') {
+                await createIndex(conn, tableName, fieldName, dbInfo);
+            }
         }
     }
 
@@ -602,41 +555,27 @@ const syncTableIndexes = async (conn, tableName, fields, dbInfo) => {
 
 // 处理单个表文件
 const processTableFile = async (conn, filePath, dbInfo) => {
-    try {
-        const fileName = path.basename(filePath, '.json');
-        const tableName = fileName;
+    const fileName = path.basename(filePath, '.json');
+    const tableName = fileName;
 
-        Logger.info(`处理表定义文件: ${fileName}`);
+    Logger.info(`处理表定义文件: ${fileName}`);
 
-        // 读取表定义
-        const tableDefinition = await Bun.file(filePath).json();
+    // 读取表定义
+    const tableDefinition = await Bun.file(filePath).json();
 
-        // 验证字段定义
-        const reservedFields = ['id', 'created_at', 'updated_at', 'deleted_at', 'state'];
-        for (const fieldName of Object.keys(tableDefinition)) {
-            if (reservedFields.includes(fieldName)) {
-                throw new Error(`字段 ${fieldName} 是保留字段，不能在表定义中使用`);
-            }
-        }
+    // 检查表是否存在
+    const exists = await tableExists(conn, tableName);
+    Logger.info(`表 ${tableName} 存在状态: ${exists}`);
 
-        // 检查表是否存在
-        const exists = await tableExists(conn, tableName);
-        Logger.info(`表 ${tableName} 存在状态: ${exists}`);
-
-        if (exists) {
-            Logger.info(`表 ${tableName} 已存在，检查字段变化并同步...`);
-            await syncTableFields(conn, tableName, tableDefinition, dbInfo);
-        } else {
-            Logger.info(`表 ${tableName} 不存在，创建新表...`);
-            await createTable(conn, tableName, tableDefinition);
-        }
-
-        Logger.info(`表 ${tableName} 处理完成`);
-    } catch (error) {
-        Logger.error(`处理表文件 ${filePath} 时出错:`, error.message);
-        console.error(`错误详情:`, error);
-        throw error;
+    if (exists) {
+        Logger.info(`表 ${tableName} 已存在，检查字段变化并同步...`);
+        await syncTableFields(conn, tableName, tableDefinition, dbInfo);
+    } else {
+        Logger.info(`表 ${tableName} 不存在，创建新表...`);
+        await createTable(conn, tableName, tableDefinition);
     }
+
+    Logger.info(`表 ${tableName} 处理完成`);
 };
 
 // 主同步函数
@@ -646,7 +585,18 @@ const syncDatabase = async () => {
     try {
         Logger.info('开始数据库表结构同步...');
 
+        // 首先执行表定义验证
+        Logger.info('步骤 1/3: 验证表定义文件...');
+        const tableValidationResult = await tableCheck();
+
+        if (!tableValidationResult) {
+            throw new Error('表定义验证失败，请检查表定义文件格式。同步操作已取消。');
+        }
+
+        Logger.info('✅ 表定义验证通过，继续执行数据库同步...');
+
         // 创建数据库连接
+        Logger.info('步骤 2/3: 建立数据库连接...');
         conn = await createConnection();
         Logger.info('数据库连接成功');
 
@@ -656,6 +606,7 @@ const syncDatabase = async () => {
         Logger.info(`Online DDL 支持: ${dbInfo.supportsOnlineDDL ? '是' : '否'}`);
 
         // 扫描tables目录
+        Logger.info('步骤 3/3: 同步数据库表结构...');
         const tablesGlob = new Bun.Glob('*.json');
         const coreTablesDir = path.join(__dirname, '..', 'tables');
         const userTablesDir = path.join(process.cwd(), 'tables');
@@ -677,14 +628,19 @@ const syncDatabase = async () => {
                 const tableName = path.basename(file, '.json');
                 const exists = await tableExists(conn, tableName);
 
-                await processTableFile(conn, file, dbInfo);
-
-                if (exists) {
-                    modifiedTables++;
-                } else {
-                    createdTables++;
+                try {
+                    await processTableFile(conn, file, dbInfo);
+                    if (exists) {
+                        modifiedTables++;
+                    } else {
+                        createdTables++;
+                    }
+                    processedCount++;
+                } catch (error) {
+                    Logger.error(`处理表文件 ${file} 时出错:`, error.message);
+                    console.error(`错误详情:`, error);
+                    throw error;
                 }
-                processedCount++;
             }
         } catch (error) {
             Logger.warn('核心表目录扫描出错:', error.message);
@@ -701,14 +657,19 @@ const syncDatabase = async () => {
                 const tableName = path.basename(file, '.json');
                 const exists = await tableExists(conn, tableName);
 
-                await processTableFile(conn, file, dbInfo);
-
-                if (exists) {
-                    modifiedTables++;
-                } else {
-                    createdTables++;
+                try {
+                    await processTableFile(conn, file, dbInfo);
+                    if (exists) {
+                        modifiedTables++;
+                    } else {
+                        createdTables++;
+                    }
+                    processedCount++;
+                } catch (error) {
+                    Logger.error(`处理表文件 ${file} 时出错:`, error.message);
+                    console.error(`错误详情:`, error);
+                    throw error;
                 }
-                processedCount++;
             }
         } catch (error) {
             Logger.warn('用户表目录扫描出错:', error.message);

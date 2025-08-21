@@ -1,4 +1,29 @@
-import { ruleSplit, isType } from './util.js';
+import { isType } from './util.js';
+
+// 专门用于处理管道符分隔的字段规则
+const parseFieldRule = (rule) => {
+    const allParts = rule.split('|');
+
+    // 现在支持7个部分：显示名|类型|最小值|最大值|默认值|是否索引|正则约束
+    if (allParts.length <= 7) {
+        // 如果少于7个部分，补齐缺失的部分为 null
+        while (allParts.length < 7) {
+            allParts.push('null');
+        }
+        return allParts;
+    }
+
+    // 如果超过7个部分，保留前6个，剩余的合并为最后的正则约束部分
+    return [
+        allParts[0], // 显示名
+        allParts[1], // 类型
+        allParts[2], // 最小值
+        allParts[3], // 最大值
+        allParts[4], // 默认值
+        allParts[5], // 是否索引
+        allParts.slice(6).join('|') // 正则约束（可能包含管道符）
+    ];
+};
 
 /**
  * 验证器类
@@ -63,7 +88,7 @@ export class Validator {
         for (const fieldName of required) {
             if (!(fieldName in data) || data[fieldName] === undefined || data[fieldName] === null || data[fieldName] === '') {
                 result.code = 1;
-                const ruleParts = rules[fieldName]?.split(',') || [];
+                const ruleParts = parseFieldRule(rules[fieldName] || '');
                 const fieldLabel = ruleParts[0] || fieldName;
                 result.fields[fieldName] = `${fieldLabel}(${fieldName})为必填项`;
             }
@@ -99,15 +124,17 @@ export class Validator {
      * 验证单个字段的值
      */
     validateFieldValue(value, rule, fieldName) {
-        const [name, type, minStr, maxStr, specStr] = ruleSplit(rule);
+        const [name, type, minStr, maxStr, defaultValue, isIndexStr, regexConstraint] = parseFieldRule(rule);
         const min = minStr === 'null' ? null : parseInt(minStr) || 0;
         const max = maxStr === 'null' ? null : parseInt(maxStr) || 0;
-        const spec = specStr === 'null' ? null : specStr.trim();
+        const spec = regexConstraint === 'null' ? null : regexConstraint.trim();
 
         switch (type.toLowerCase()) {
             case 'number':
                 return this.validateNumber(value, name, min, max, spec, fieldName);
             case 'string':
+                return this.validateString(value, name, min, max, spec, fieldName);
+            case 'text':
                 return this.validateString(value, name, min, max, spec, fieldName);
             case 'array':
                 return this.validateArray(value, name, min, max, spec, fieldName);
@@ -129,7 +156,7 @@ export class Validator {
                 return `${name}(${fieldName})不能小于${min}`;
             }
 
-            if (min !== null && max > 0 && value > max) {
+            if (max !== null && max > 0 && value > max) {
                 return `${name}(${fieldName})不能大于${max}`;
             }
 
